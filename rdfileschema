@@ -1,0 +1,16 @@
+
+
+create table reaxys.rdfile (
+rx_id bigint primary key,
+rx_rank integer,
+rx_myd text,
+rx_typ text,
+rxnsmiles text,
+x_trans text,
+x_qry0 text,
+x_qry1 text,
+x_qry2 text,
+x_qry3 text,
+x_qry4 text,
+x_qry5 text
+)

@@ -1,0 +1,188 @@
+-- create schema, dropping existing tables to clear out --
+-- be careful as this will delete your data  --
+
+drop table reaxys.udm;
+create table reaxys.udm (
+minor integer,
+major integer,
+revision integer,
+build integer,
+database text,
+sequence bigint,
+timestamp timestamp
+);
+
+drop table reaxys.citation;
+create table reaxys.citation (
+citation_id bigint primary key,
+type text,
+author text,
+title text,
+journal text,
+year text,
+vol text,
+page text,
+keyword text,
+doi text,
+patent_country text,
+patent_number text,
+patent_assignee text,
+patent_kind_code text,
+patent_pub_date text,
+abstract text,
+comments text 
+);
+
+drop table reaxys.molecule;
+create table reaxys.molecule (
+molecule_id bigint primary key,
+ID text,
+molstructure text,
+mw real,
+clp real,
+psa real,
+hev integer,
+rtb integer,
+hbd integer,
+hba integer,
+noc integer,
+rng integer,
+cc_id text,
+cas text [],
+comments text [],
+identifiers text[],
+links text [],
+synonyms text [],
+calculated text [],
+cit_id bigint [],
+cit_id_parent bigint []
+);
+create index on reaxys.molecule (ID);
+
+drop table reaxys.reaction;
+create table reaxys.reaction (
+reaction_id bigint primary key,
+reaxys_reaction_id bigint,
+rxnstructure text,
+rank integer,
+mw_largest_product real,
+sort_creation_date date,
+sort_reaction_scale real,
+sort_total_volume real,
+reactant_id bigint [],
+metabolite_id bigint [],
+product_id bigint [],
+variations bigint []
+);
+
+drop table reaxys.variation;
+create table reaxys.variation (
+  variation_id bigint primary key,
+  CREATION_DATE date,
+  EXPERIMENT_ID text,
+  EXPERIMENT_TYPE text,
+  MODIFICATION_DATE date,
+  PROJECT_NAME text,
+  QUALIFICATION text,
+  SOURCE text,
+  DESTINATION text,
+  CONCLUSION_PHRASE text,
+  CREATED_AT_SITE text,
+  DUPLICATE_EXP_REF text,
+  PREPARATIVE boolean,
+  ELN_CITATION text,
+  REACTION_SCALE real,
+  NEXTMOVE_REACTION_TYPE text,
+  RXNO_REACTION_TYPE text,
+  ANALYTICAL_DATA_EXISTS boolean,
+  TECHNOLOGY text [],
+  SCIENTIST text [],
+  RESP_SCIENTIST text,
+  KEYWORDS text [],
+  REACTANTS bigint [],
+  PRODUCTS  bigint [],
+  REAGENTS  bigint [],
+  CATALYSTS bigint [],
+  SOLVENTS  bigint [],
+  CONDITIONS bigint [],
+  METABOLITES bigint [],
+  STAGES bigint [],
+  COMMENTS text [],
+  IDENTIFIERS text [],
+  LINKS  text [],
+  GROUPS text [],
+  ANIMALS text [],
+  CIT_ID text [],
+  excretion text,
+  route text,
+  species text,
+  amount real,
+  color text,
+  conversion real,
+  form text,
+  volume real,
+  purity real,
+  enantiomeric_purity real,
+  sample_id text,
+  sample_ref text,
+  compound_name text,
+  equivalents real
+);
+
+drop table reaxys.stages;
+create table reaxys.stages (
+stage_id bigint primary key,
+reactants bigint [],
+products  bigint [],
+reagents bigint [],
+catalysts bigint [],
+solvents bigint [],
+conditions bigint [],
+metabolites bigint []
+);
+
+drop table reaxys.metabolites;
+create table reaxys.metabolites (
+metabolite_id bigint,
+amount text,
+equivalents real,
+comments text []
+);
+
+
+
+-- product, reactant, reagent, solvent, catalyst --
+drop table reaxys.substance;
+create table reaxys.substance (
+substance_id bigint primary key,
+reaxys_id bigint,
+name text,
+amount real,
+form text,
+color text,
+yield real,
+conversion real,
+purity real,
+enantiomeric_purity real,
+volume real,
+equivalents real,
+sample_id  text [],
+sample_ref text [],
+compound_name text [],
+comments text
+);
+
+drop table reaxys.conditions;
+create table reaxys.conditions (
+condition_id bigint primary key,
+atmosphere text,
+ph numrange,
+preparation text,
+pressure numrange,
+reaction_molarity numrange,
+reflux text,
+temperature numrange,
+time numrange,
+total_volume  numrange
+);
+
