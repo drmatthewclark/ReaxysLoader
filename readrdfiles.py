@@ -1,3 +1,4 @@
+# rmc file release number
 dbname='mclark'
 debug = False
 
@@ -12,6 +13,7 @@ import gzip
 from rdkit import Chem
 from rdkit import RDLogger
 import rdkit.Chem.rdChemReactions
+
 
 
 def readnextRDfile(file):
@@ -33,7 +35,7 @@ def readnextRDfile(file):
         if line == '':
             blankcount += 1
         if blankcount > 2:
-            break
+            return None
 
     tags = processRXN(rdfile)
     return tags # dictionary 
@@ -135,7 +137,7 @@ def readrdfiles(fname):
         # loop over concatenated files
         while True:
             rdrecord = readnextRDfile(file)
-            if rdrecord is None:
+            if not rdrecord:
                 break;
             writedb(conn, rdrecord)
             count += 1
