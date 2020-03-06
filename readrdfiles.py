@@ -23,7 +23,9 @@ def readnextRDfile(file):
     blankcount = 0
 
     line = file.readline().rstrip()
-    line = ''
+    if line == '':
+        return None
+
     while not line.startswith('$RFMT $RIREG'):
         line = file.readline()
         if not line.startswith('$RFMT $RIREG'):
@@ -35,7 +37,7 @@ def readnextRDfile(file):
         if line == '':
             blankcount += 1
         if blankcount > 2:
-            return None
+            break
 
     tags = processRXN(rdfile)
     return tags # dictionary 
@@ -49,7 +51,6 @@ def processRXN(rdfile):
     header = '' + '\n' + 'GSMACCS-II07189510252D 1   0.00366     0.00000     0' + '\n\n'  + '  0  0  0     0  0            999 V3000' + '\n'
     tail = 'M  END' 
     counter += 1
-    print("rdfile: ", counter)
     reactants = list()
     products = list()
     currentstructure = header
@@ -139,8 +140,11 @@ def readrdfiles(fname):
             rdrecord = readnextRDfile(file)
             if not rdrecord:
                 break;
-            writedb(conn, rdrecord)
-            count += 1
+            if 'RX_ID' in rdrecord.keys():
+                writedb(conn, rdrecord)
+                count += 1
+                if count % 10000 == 0:
+                   conn.commit()
 
     conn.commit()
     conn.close()
@@ -169,6 +173,5 @@ def readrdfile():
   """
   for filepath in glob.iglob('rdf/*.rdf.gz'):
     readrdfiles(filepath)
-    break
 
 readrdfile()
