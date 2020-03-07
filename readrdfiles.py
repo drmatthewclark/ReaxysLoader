@@ -14,7 +14,7 @@ from rdkit import Chem
 from rdkit import RDLogger
 import rdkit.Chem.rdChemReactions
 
-
+global conn
 
 def readnextRDfile(file):
     line = '' # file.readline()
@@ -91,38 +91,82 @@ def processRXN(rdfile):
                 print("error parsing RDfile ")
 
         if line.startswith('$DTYPE'):
-            dtype = line[12:]
+            dtype = line[line.find('RX'):]
 
         if dtype and line.startswith('$DATUM'):
             datum = line[7:]
 
-            if dtype.startswith('RX'):
+            if dtype.endswith('RCT') or dtype.endswith('PRO'):
+                if not dtype in data.keys():
+                    data[dtype] = list()
+                data[dtype].append(datum) 
+            elif dtype.endswith('XRN'):
+                if not dtype in data.keys():
+                    data[dtype] = list()
+                data[dtype].append(int(datum)) 
+            elif dtype.startswith('RX'):
                 data[dtype] = datum
             elif dtype.startswith('TRANSFORM'):
                 data[dtype[14:]] = datum
             dtype = None
 
-    data['rxnsmiles'] = tosmiles(products, reactants)
+    reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
+    
+    if data and 'RX_RXRN' in data.keys():
+        for i in range(0 , len(data['RX_RXRN'])):
+            rid = data['RX_RXRN'][i] 
+            smiles = ''
+            if reacts is not None and len(reacts) >= i:
+                 smiles = reacts[i]
+            name = data['RX_RCT'][i].replace("'","''")
+            sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (' + str(rid) + ',\'' + name + '\',\'' + smiles + '\') on conflict (molecule_id) do nothing'
+            with conn.cursor() as cur:
+                cur.execute(sql)
+
+    if data and 'RX_PXRN' in data.keys():
+        for i in range(0 , len(data['RX_PXRN'])):
+            rid = data['RX_PXRN'][i]
+            smiles = ''
+            if prods is not None and len(prods) >= i:
+                 smiles = prods[i]
+            name = data['RX_PRO'][i].replace("'","''")
+            sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (' + str(rid) + ',\'' + name + '\',\'' + smiles + '\') on conflict (molecule_id) do nothing'
+            with conn.cursor() as cur:
+                cur.execute(sql)
+
+    if 'RX_RCT' in data.keys():
+        del data['RX_RCT']
+    if 'RX_PRO' in data.keys():
+        del data['RX_PRO']
+
     return data
 
 def tosmiles(products, reactants):
+    prods = list()
+    reacts = list()
     try:
        smiles = ''
        for r in reactants:
            mol = Chem.MolFromMolBlock(r)
-           smiles += Chem.MolToSmiles(mol) + '.'
+           reactant_smiles = Chem.MolToSmiles(mol)
+           reacts.append(reactant_smiles)
+           smiles += reactant_smiles + '.'
+
        smiles = smiles[:-1]
        smiles += '>>'
+
        for p in products:
-           mol = Chem.MolFromMolBlock(r)
-           smiles += Chem.MolToSmiles(mol) + '.'
+           mol = Chem.MolFromMolBlock(p)
+           product_smiles = Chem.MolToSmiles(mol)
+           prods.append(product_smiles)
+           smiles += product_smiles + '.'
        smiles = smiles[:-1]
    
        rxn = Chem.rdChemReactions.ReactionFromSmarts(smiles)
        sm = Chem.rdChemReactions.ReactionToSmiles(rxn)
-       return sm
+       return reacts, prods, sm
     except:
-       return None
+       return None, None, None
 
 def readrdfiles(fname):
     """ read all of the individual SDFiles from the concatenated SDFile """
@@ -130,6 +174,7 @@ def readrdfiles(fname):
     lg = RDLogger.logger()
     lg.setLevel(RDLogger.CRITICAL)
     count = 0
+    global conn
     conn=psql.connect(user=dbname)
     with gzip.open(fname, 'rt') as file:
         # remove header lines
@@ -143,7 +188,7 @@ def readrdfiles(fname):
             if 'RX_ID' in rdrecord.keys():
                 writedb(conn, rdrecord)
                 count += 1
-                if count % 10000 == 0:
+                if count % 10000000 == 0:
                    conn.commit()
 
     conn.commit()
