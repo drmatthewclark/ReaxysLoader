@@ -112,27 +112,32 @@ def processRXN(rdfile):
 
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
+    sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (%s, %s, %s) on conflict (molecule_id) do nothing'
     if data and 'RX_RXRN' in data.keys():
         for i in range(0 , len(data['RX_RXRN'])):
             rid = data['RX_RXRN'][i] 
-            smiles = ''
-            if reacts is not None and len(reacts) >= i:
+            smiles = None
+            name = None
+            if reacts is not None and len(reacts) > i:
                  smiles = reacts[i]
-            name = data['RX_RCT'][i].replace("'","''")
-            sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (' + str(rid) + ',\'' + name + '\',\'' + smiles + '\') on conflict (molecule_id) do nothing'
+            if 'RX_RCT' in data.keys() and len(data['RX_RCT']) > i:
+                name = data['RX_RCT'][i]
             with conn.cursor() as cur:
-                cur.execute(sql)
+                #print(cur.mogrify(sql, (rid, name, smiles)))
+                cur.execute(sql, (rid, name, smiles))
 
     if data and 'RX_PXRN' in data.keys():
         for i in range(0 , len(data['RX_PXRN'])):
             rid = data['RX_PXRN'][i]
-            smiles = ''
-            if prods is not None and len(prods) >= i:
+            smiles = None
+            name = None
+            if prods is not None and len(prods) > i:
                  smiles = prods[i]
-            name = data['RX_PRO'][i].replace("'","''")
-            sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (' + str(rid) + ',\'' + name + '\',\'' + smiles + '\') on conflict (molecule_id) do nothing'
+            if 'RX_PRO' in data.keys() and len(data['RX_PRO']) > i:
+                 name = data['RX_PRO'][i]
             with conn.cursor() as cur:
-                cur.execute(sql)
+                #print(cur.mogrify(sql, (rid, name, smiles)))
+                cur.execute(sql, (rid, name, smiles))
 
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
@@ -148,7 +153,7 @@ def tosmiles(products, reactants):
        smiles = ''
        for r in reactants:
            mol = Chem.MolFromMolBlock(r)
-           reactant_smiles = Chem.MolToSmiles(mol)
+           reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical = True)
            reacts.append(reactant_smiles)
            smiles += reactant_smiles + '.'
 
@@ -157,7 +162,7 @@ def tosmiles(products, reactants):
 
        for p in products:
            mol = Chem.MolFromMolBlock(p)
-           product_smiles = Chem.MolToSmiles(mol)
+           product_smiles = Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)
            prods.append(product_smiles)
            smiles += product_smiles + '.'
        smiles = smiles[:-1]
@@ -201,7 +206,7 @@ def readrdfiles(fname):
 def writedb(conn, data):
      """ write a SDFile record the database """
 
-     sql = 'insert into reaxys.rdfile (%s) values %s'
+     sql = 'insert into reaxys.rdfile (%s) values %s on conflict (rx_id) do nothing'
      with conn.cursor() as cur:
          columns = data.keys()
          values = [data[column] for column in columns]
@@ -216,7 +221,11 @@ def readrdfile():
   """ read the SDFiles. This requires special functions because this is
     not an XML file
   """
+  go = False
   for filepath in glob.iglob('rdf/*.rdf.gz'):
-    readrdfiles(filepath)
+    #if filepath == 'rdf/rx200061_0089.rdf.gz':
+    go = True
+    if go:
+        readrdfiles(filepath)
 
 readrdfile()
