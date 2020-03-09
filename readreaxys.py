@@ -191,7 +191,22 @@ def readreactions(fname, dbname):
                 value = subelem.text
                 data[tag] = value
  
-        for item in ['REACTANT_ID', 'METABOLITE_ID', 'PRODUCT_ID', 'VARIATIONS']:
+        for item in ['REACTANT_ID', 'METABOLITE_ID', 'PRODUCT_ID']:
+            subelem  = elem.findall(item)
+            if subelem:
+                ilist = list()
+                for sselem in subelem:
+                    # some of the data are MD5 hash strings, to be annoying
+                    # we will just make this a hash to be compatible as integer key 
+                    # for this database
+                    text  = sselem.text
+                    if text.startswith("MD5"):
+                       text = hash(hashlib.md5(text.encode('utf-8')).hexdigest())
+                    text = int(text)
+                    ilist.append(text)
+                data[item] = ilist 
+
+        for item in ['VARIATIONS']:
             subelem  = elem.findall(item)
             if subelem:
                 ilist = list()
@@ -199,7 +214,6 @@ def readreactions(fname, dbname):
                     tag = getid(sselem)
                     ilist.append(tag)
                 data[item] = ilist 
-
         columns = data.keys()
         values = [data[column] for column in columns]
         #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
@@ -262,7 +276,7 @@ def readcitations(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.citation (%s) values %s';
+    sql =  'insert into reaxys.citation (%s) values %s on conflict(citation_id) do nothing';
 
     for elem in root.findall('CITATIONS/CITATION'):
         data = {}
