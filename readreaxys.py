@@ -24,9 +24,11 @@ def getid(element):
     if id and id.isnumeric() and len(list(element)) == 1:
        return int(id)
     else:
-       if id is None:
-           id = 'x'
-       return hash(hashlib.md5(id.join(element.itertext()).encode('utf-8')).hexdigest())
+       text = ''.join(element.itertext()).encode('utf-8')
+       hashcode = hash(hashlib.md5(text).hexdigest())
+       if debug:
+           print('key:',text, 'hash', hashcode)
+       return hashcode
 
 def readconditions(fname, dbname):
     """ 
@@ -74,9 +76,10 @@ def readconditions(fname, dbname):
  
             columns = data.keys()
             values = [data[column] for column in columns]
-    
-            #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
-            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+            if debug: 
+                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
+            else:
+                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
 
@@ -112,8 +115,10 @@ def readstages(fname, dbname):
  
             columns = data.keys()
             values = [data[column] for column in columns]
-            #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
-            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+            if debug:
+                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
+            else:
+                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
 
@@ -133,7 +138,7 @@ def readvariations(fname, dbname):
     cur = conn.cursor()
     sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing';
     for record in root.findall('REACTIONS/REACTION'):
-        for elem in record.findall('.//VARIATIONS'): 
+        for elem in record.findall('VARIATIONS'): 
             data = {}
             data['variation_id'] = getid(elem) 
 
@@ -159,8 +164,10 @@ def readvariations(fname, dbname):
 
             columns = data.keys()
             values = [data[column] for column in columns]
-            #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
-            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+            if debug:
+                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))) 
+            else:
+                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
 
@@ -173,7 +180,7 @@ def readreactions(fname, dbname):
     dbname - name for the database to store data to
     sql - template sql statement to execute for storing the data
     """
-    print('readreactions',fname)
+    print('readreactions ',fname)
     tree = ET.parse(gzip.open(fname));
     root = tree.getroot()
     conn = psql.connect(user=dbname)
@@ -214,10 +221,13 @@ def readreactions(fname, dbname):
                     tag = getid(sselem)
                     ilist.append(tag)
                 data[item] = ilist 
+
         columns = data.keys()
         values = [data[column] for column in columns]
-        #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
-        cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+        if debug:
+            print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))) 
+        else:
+            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
 
@@ -238,12 +248,12 @@ def readsubstances(fname, dbname):
     cur = conn.cursor()
     sql =  'insert into reaxys.substance (%s) values %s on CONFLICT (substance_id) do nothing';
     for record in root.findall('REACTIONS/REACTION'):
-        for elem in record.findall('.//VARIATIONS'): 
+        for elem in record.findall('VARIATIONS'): 
 
             #this set has lists
             for item  in ['REACTANTS', 'PRODUCTS', 'REAGENTS','CATALYSTS','SOLVENTS','METABOLITES']:
                 data = {}
-                subelem  = elem.find('.//' + item)
+                subelem  = elem.find(item)
                 if subelem:
                     data['substance_id'] = getid(subelem)
                     temp = subelem.attrib.get('ID')
@@ -257,7 +267,10 @@ def readsubstances(fname, dbname):
 
                     columns = data.keys()
                     values = [data[column] for column in columns]
-                    cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+                    if debug:
+                        print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
+                    else:
+                        cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close() 
 
@@ -290,19 +303,21 @@ def readcitations(fname, dbname):
 
         columns = data.keys()
         values = [data[column] for column in columns]
-        #print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))       
-        cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))       
+        if debug:
+            print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
+        else:
+            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
 
 
-for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
-  readcitations(filepath, 'mclark')
+#for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
+#  readcitations(filepath, 'mclark')
 
-
+go = False
 for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
-    readreactions(filepath, 'mclark')
-    readconditions(filepath, 'mclark')
-    readstages(filepath, 'mclark')
-    readvariations(filepath, 'mclark')
-    readsubstances(filepath, 'mclark')
+        readreactions(filepath, 'mclark')
+        readconditions(filepath, 'mclark')
+        readstages(filepath, 'mclark')
+        readvariations(filepath, 'mclark')
+        readsubstances(filepath, 'mclark')
