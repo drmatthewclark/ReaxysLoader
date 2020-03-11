@@ -1,188 +1,381 @@
--- create schema, dropping existing tables to clear out --
--- be careful as this will delete your data  --
+--
+-- PostgreSQL database dump
+--
 
-drop table reaxys.udm;
-create table reaxys.udm (
-minor integer,
-major integer,
-revision integer,
-build integer,
-database text,
-sequence bigint,
-timestamp timestamp
-);
+-- Dumped from database version 11.7
+-- Dumped by pg_dump version 11.7
 
-drop table reaxys.citation;
-create table reaxys.citation (
-citation_id bigint primary key,
-type text,
-author text,
-title text,
-journal text,
-year text,
-vol text,
-page text,
-keyword text,
-doi text,
-patent_country text,
-patent_number text,
-patent_assignee text,
-patent_kind_code text,
-patent_pub_date text,
-abstract text,
-comments text 
-);
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
-drop table reaxys.molecule;
-create table reaxys.molecule (
-molecule_id bigint primary key,
-ID text,
-molstructure text,
-mw real,
-clp real,
-psa real,
-hev integer,
-rtb integer,
-hbd integer,
-hba integer,
-noc integer,
-rng integer,
-cc_id text,
-cas text [],
-comments text [],
-identifiers text[],
-links text [],
-synonyms text [],
-calculated text [],
-cit_id bigint [],
-cit_id_parent bigint []
-);
-create index on reaxys.molecule (ID);
+--
+-- Name: reaxys; Type: SCHEMA; Schema: -; Owner: -
+--
 
-drop table reaxys.reaction;
-create table reaxys.reaction (
-reaction_id bigint primary key,
-reaxys_reaction_id bigint,
-rxnstructure text,
-rank integer,
-mw_largest_product real,
-sort_creation_date date,
-sort_reaction_scale real,
-sort_total_volume real,
-reactant_id bigint [],
-metabolite_id bigint [],
-product_id bigint [],
-variations bigint []
-);
+CREATE SCHEMA reaxys;
 
-drop table reaxys.variation;
-create table reaxys.variation (
-  variation_id bigint primary key,
-  CREATION_DATE date,
-  EXPERIMENT_ID text,
-  EXPERIMENT_TYPE text,
-  MODIFICATION_DATE date,
-  PROJECT_NAME text,
-  QUALIFICATION text,
-  SOURCE text,
-  DESTINATION text,
-  CONCLUSION_PHRASE text,
-  CREATED_AT_SITE text,
-  DUPLICATE_EXP_REF text,
-  PREPARATIVE boolean,
-  ELN_CITATION text,
-  REACTION_SCALE real,
-  NEXTMOVE_REACTION_TYPE text,
-  RXNO_REACTION_TYPE text,
-  ANALYTICAL_DATA_EXISTS boolean,
-  TECHNOLOGY text [],
-  SCIENTIST text [],
-  RESP_SCIENTIST text,
-  KEYWORDS text [],
-  REACTANTS bigint [],
-  PRODUCTS  bigint [],
-  REAGENTS  bigint [],
-  CATALYSTS bigint [],
-  SOLVENTS  bigint [],
-  CONDITIONS bigint [],
-  METABOLITES bigint [],
-  STAGES bigint [],
-  COMMENTS text [],
-  IDENTIFIERS text [],
-  LINKS  text [],
-  GROUPS text [],
-  ANIMALS text [],
-  CIT_ID text [],
-  excretion text,
-  route text,
-  species text,
-  amount real,
-  color text,
-  conversion real,
-  form text,
-  volume real,
-  purity real,
-  enantiomeric_purity real,
-  sample_id text,
-  sample_ref text,
-  compound_name text,
-  equivalents real
-);
 
-drop table reaxys.stages;
-create table reaxys.stages (
-stage_id bigint primary key,
-reactants bigint [],
-products  bigint [],
-reagents bigint [],
-catalysts bigint [],
-solvents bigint [],
-conditions bigint [],
-metabolites bigint []
-);
+SET default_tablespace = '';
 
-drop table reaxys.metabolites;
-create table reaxys.metabolites (
-metabolite_id bigint,
-amount text,
-equivalents real,
-comments text []
+SET default_with_oids = false;
+
+--
+-- Name: citation; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.citation (
+    citation_id bigint NOT NULL,
+    type text,
+    author text,
+    title text,
+    journal text,
+    year text,
+    vol text,
+    page text,
+    keyword text,
+    doi text,
+    patent_country text,
+    patent_number text,
+    patent_assignee text,
+    patent_kind_code text,
+    patent_pub_date text,
+    abstract text,
+    comments text
 );
 
 
+--
+-- Name: comment; Type: TABLE; Schema: reaxys; Owner: -
+--
 
--- product, reactant, reagent, solvent, catalyst --
-drop table reaxys.substance;
-create table reaxys.substance (
-substance_id bigint primary key,
-reaxys_id bigint,
-name text,
-amount real,
-form text,
-color text,
-yield real,
-conversion real,
-purity real,
-enantiomeric_purity real,
-volume real,
-equivalents real,
-sample_id  text [],
-sample_ref text [],
-compound_name text [],
-comments text
+CREATE TABLE reaxys.comment (
+    id bigint,
+    comment text,
+    type text
 );
 
-drop table reaxys.conditions;
-create table reaxys.conditions (
-condition_id bigint primary key,
-atmosphere text,
-ph numrange,
-preparation text,
-pressure numrange,
-reaction_molarity numrange,
-reflux text,
-temperature numrange,
-time numrange,
-total_volume  numrange
+
+--
+-- Name: conditions; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE UNLOGGED TABLE reaxys.conditions (
+    condition_id bigint NOT NULL,
+    atmosphere text,
+    ph numrange,
+    preparation text,
+    pressure numrange,
+    reaction_molarity numrange,
+    reflux text,
+    temperature numrange,
+    "time" numrange,
+    total_volume numrange
 );
+
+
+--
+-- Name: molecule; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.molecule (
+    molecule_id bigint NOT NULL,
+    id text,
+    molstructure text,
+    mw real,
+    clp real,
+    psa real,
+    hev integer,
+    rtb integer,
+    hbd integer,
+    hba integer,
+    noc integer,
+    rng integer,
+    cc_id text,
+    cas text[],
+    comments text[],
+    identifiers text[],
+    links text[],
+    synonyms text[],
+    calculated text[],
+    cit_id bigint[],
+    cit_id_parent bigint[],
+    name text,
+    molecule public.mol
+);
+
+
+--
+-- Name: rdfile; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.rdfile (
+    rx_id bigint NOT NULL,
+    rx_rank integer,
+    rx_myd text,
+    rx_typ text,
+    rx_rxrn bigint[],
+    rx_pxrn bigint[],
+    rxnsmiles text,
+    rx_trans text,
+    rx_qry0 text,
+    rx_qry1 text,
+    rx_qry2 text,
+    rx_qry3 text,
+    rx_qry4 text,
+    rx_qry5 text,
+    reaction public.reaction
+);
+
+
+--
+-- Name: reaction; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE UNLOGGED TABLE reaxys.reaction (
+    reaction_id bigint NOT NULL,
+    reaxys_reaction_id bigint,
+    rxnstructure text,
+    rank integer,
+    mw_largest_product real,
+    sort_creation_date date,
+    sort_reaction_scale real,
+    sort_total_volume real,
+    reactant_id bigint[],
+    metabolite_id bigint[],
+    product_id bigint[],
+    variations bigint[]
+);
+
+
+--
+-- Name: stages; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE UNLOGGED TABLE reaxys.stages (
+    stage_id bigint NOT NULL,
+    reactants bigint[],
+    products bigint[],
+    reagents bigint[],
+    catalysts bigint[],
+    solvents bigint[],
+    conditions bigint[],
+    metabolites bigint[]
+);
+
+
+--
+-- Name: variation; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE UNLOGGED TABLE reaxys.variation (
+    variation_id bigint NOT NULL,
+    creation_date date,
+    experiment_id text,
+    experiment_type text,
+    modification_date date,
+    project_name text,
+    qualification text,
+    source text,
+    destination text,
+    conclusion_phrase text,
+    created_at_site text,
+    duplicate_exp_ref text,
+    preparative boolean,
+    eln_citation text,
+    reaction_scale real,
+    nextmove_reaction_type text,
+    rxno_reaction_type text,
+    analytical_data_exists boolean,
+    technology text[],
+    scientist text[],
+    resp_scientist text,
+    keywords text[],
+    reactants bigint[],
+    products bigint[],
+    reagents bigint[],
+    catalysts bigint[],
+    solvents bigint[],
+    conditions bigint[],
+    metabolites bigint[],
+    stages bigint[],
+    comments text[],
+    identifiers text[],
+    links text[],
+    groups text[],
+    animals text[],
+    cit_id text[],
+    excretion text,
+    route text,
+    species text,
+    amount real,
+    color text,
+    conversion real,
+    form text,
+    volume real,
+    purity real,
+    enantiomeric_purity real,
+    sample_id text,
+    sample_ref text,
+    compound_name text,
+    equivalents real
+);
+
+
+--
+-- Name: reaxys_conditions; Type: VIEW; Schema: reaxys; Owner: -
+--
+
+CREATE VIEW reaxys.reaxys_conditions AS
+ SELECT rdfile.rx_id,
+    reaction.reaction_id,
+    NULL::bigint AS stage_id,
+    variation.variation_id,
+    conditions.condition_id
+   FROM reaxys.rdfile,
+    reaxys.reaction,
+    reaxys.variation,
+    reaxys.conditions
+  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (conditions.condition_id = ANY (variation.conditions)) AND (reaction.reaxys_reaction_id = rdfile.rx_id))
+UNION
+ SELECT rdfile.rx_id,
+    reaction.reaction_id,
+    stages.stage_id,
+    variation.variation_id,
+    conditions.condition_id
+   FROM reaxys.rdfile,
+    reaxys.reaction,
+    reaxys.variation,
+    reaxys.stages,
+    reaxys.conditions
+  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (stages.stage_id = ANY (variation.stages)) AND (conditions.condition_id = ANY (stages.conditions)) AND (reaction.reaxys_reaction_id = rdfile.rx_id));
+
+
+--
+-- Name: substance; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE UNLOGGED TABLE reaxys.substance (
+    substance_id bigint NOT NULL,
+    reaxys_id bigint,
+    name text,
+    amount real,
+    form text,
+    color text,
+    yield real,
+    conversion real,
+    purity real,
+    enantiomeric_purity real,
+    volume real,
+    equivalents real,
+    sample_id text[],
+    sample_ref text[],
+    compound_name text[],
+    comments text
+);
+
+
+--
+-- Name: udm; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.udm (
+    minor integer,
+    major integer,
+    revision integer,
+    build integer,
+    database text,
+    sequence bigint,
+    "timestamp" timestamp without time zone
+);
+
+
+--
+-- Name: citation citation_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.citation
+    ADD CONSTRAINT citation_pkey PRIMARY KEY (citation_id);
+
+
+--
+-- Name: conditions conditions_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.conditions
+    ADD CONSTRAINT conditions_pkey PRIMARY KEY (condition_id);
+
+
+--
+-- Name: molecule molecule_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.molecule
+    ADD CONSTRAINT molecule_pkey PRIMARY KEY (molecule_id);
+
+
+--
+-- Name: rdfile rdfile_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.rdfile
+    ADD CONSTRAINT rdfile_pkey PRIMARY KEY (rx_id);
+
+
+--
+-- Name: reaction reaction_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.reaction
+    ADD CONSTRAINT reaction_pkey PRIMARY KEY (reaction_id);
+
+
+--
+-- Name: stages stages_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.stages
+    ADD CONSTRAINT stages_pkey PRIMARY KEY (stage_id);
+
+
+--
+-- Name: substance substance_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.substance
+    ADD CONSTRAINT substance_pkey PRIMARY KEY (substance_id);
+
+
+--
+-- Name: variation variation_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.variation
+    ADD CONSTRAINT variation_pkey PRIMARY KEY (variation_id);
+
+
+--
+-- Name: molecule_id_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX molecule_id_idx ON reaxys.molecule USING btree (id);
+
+
+--
+-- Name: reaction_reaxys_reaction_id_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX reaction_reaxys_reaction_id_idx ON reaxys.reaction USING btree (reaxys_reaction_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
 
