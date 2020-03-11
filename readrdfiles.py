@@ -122,9 +122,9 @@ def processRXN(rdfile):
                  smiles = reacts[i]
             if 'RX_RCT' in data.keys() and len(data['RX_RCT']) > i:
                 name = data['RX_RCT'][i]
-            with conn.cursor() as cur:
+            #with conn.cursor() as cur:
                 #print(cur.mogrify(sql, (rid, name, smiles)))
-                cur.execute(sql, (rid, name, smiles))
+                #cur.execute(sql, (rid, name, smiles))
 
     if data and 'RX_PXRN' in data.keys():
         for i in range(0 , len(data['RX_PXRN'])):
@@ -135,9 +135,9 @@ def processRXN(rdfile):
                  smiles = prods[i]
             if 'RX_PRO' in data.keys() and len(data['RX_PRO']) > i:
                  name = data['RX_PRO'][i]
-            with conn.cursor() as cur:
+            #with conn.cursor() as cur:
                 #print(cur.mogrify(sql, (rid, name, smiles)))
-                cur.execute(sql, (rid, name, smiles))
+                #cur.execute(sql, (rid, name, smiles))
 
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
