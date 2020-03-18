@@ -1,34 +1,41 @@
 # rmc file release number
-rmcversion = 'rx200171'
 dbname='mclark'
+
+# if true will print out the sql statements and other data for debugging
 debug = False
+
+# allow ignoring already existing primary keys without throwing error.  
+# if update is true then duplicate keys are ignored, but the records are not updated
+# if false will throw an error on key conflict 
+update = False
 
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
-from   psycopg2 import sql
 from psycopg2.extensions import AsIs
 import glob
 import gzip
-import hashlib
+from myhash import myhash
 
-# for rdkit Mol to Smiles
-#from rdkit import Chem
-#from rdkit import RDLogger
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
+
     if element is None:
+        print("getid error: null element")
         return -1
 
     id = element.attrib.get('ID') 
+
     if id and id.isnumeric() and len(list(element)) == 1:
        return int(id)
     else:
        text = ''.join(element.itertext()).encode('utf-8')
-       hashcode = hash(hashlib.md5(text).hexdigest())
+       hashcode = myhash(text)
+
        if debug:
            print('key:',text, 'hash', hashcode)
        return hashcode
+
 
 def readconditions(fname, dbname):
     """ 
@@ -44,9 +51,13 @@ def readconditions(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.conditions (%s) values %s on conflict (condition_id) do nothing';
+    if update:
+        sql =  'insert into reaxys.conditions (%s) values %s on conflict (condition_id) do nothing;'
+    else:
+        sql =  'insert into reaxys.conditions (%s) values %s;'
+
     for record in root.findall('REACTIONS/REACTION'):
-        for elem in record.findall('.//CONDITIONS'): 
+        for elem in record.findall('VARIATIONS/CONDITIONS'): 
             data = {}
             data['condition_id'] = getid(elem) 
 
@@ -97,9 +108,13 @@ def readstages(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.stages (%s) values %s on conflict (stage_id) do nothing';
+    if update:
+        sql =  'insert into reaxys.stages (%s) values %s on conflict (stage_id) do nothing;'
+    else:
+        sql =  'insert into reaxys.stages (%s) values %s;'
+
     for record in root.findall('REACTIONS/REACTION'):
-        for elem in record.findall('.//STAGES'): 
+        for elem in record.findall('VARIATIONS/STAGES'): 
             data = {}
             data['stage_id'] = getid(elem) 
     
@@ -136,7 +151,12 @@ def readvariations(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing';
+
+    if update:
+        sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing;'
+    else:
+        sql =  'insert into reaxys.variation (%s) values %s;'
+
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
             data = {}
@@ -185,7 +205,11 @@ def readreactions(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.reaction (%s) values %s on conflict (reaction_id) do nothing';
+    if update:
+        sql =  'insert into reaxys.reaction (%s) values %s on conflict (reaction_id) do nothing';
+    else:
+        sql =  'insert into reaxys.reaction (%s) values %s';
+
     for elem in root.findall('REACTIONS/REACTION'):
         data = {}
         data['reaction_id'] = getid(elem) 
@@ -208,7 +232,7 @@ def readreactions(fname, dbname):
                     # for this database
                     text  = sselem.text
                     if text.startswith("MD5"):
-                       text = hash(hashlib.md5(text.encode('utf-8')).hexdigest())
+                       text = myhash(text.encode('utf-8'))
                     text = int(text)
                     ilist.append(text)
                 data[item] = ilist 
@@ -230,6 +254,8 @@ def readreactions(fname, dbname):
             cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
     conn.commit()
     conn.close()
+
+
 
 
 def readsubstances(fname, dbname):
@@ -289,7 +315,11 @@ def readcitations(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    sql =  'insert into reaxys.citation (%s) values %s on conflict(citation_id) do nothing';
+
+    if update:
+        sql =  'insert into reaxys.citation (%s) values %s on conflict(citation_id) do nothing;'
+    else:
+        sql =  'insert into reaxys.citation (%s) values %s;'
 
     for elem in root.findall('CITATIONS/CITATION'):
         data = {}
@@ -310,14 +340,15 @@ def readcitations(fname, dbname):
     conn.commit()
     conn.close()
 
-
+# read the citation files
 #for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
 #  readcitations(filepath, 'mclark')
 
 go = False
 for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
-        readreactions(filepath, 'mclark')
-        readconditions(filepath, 'mclark')
-        readstages(filepath, 'mclark')
-        readvariations(filepath, 'mclark')
-        readsubstances(filepath, 'mclark')
+        readreactions(filepath, dbname)
+        readconditions(filepath, dbname)
+        readstages(filepath, dbname)
+        readvariations(filepath, dbname)
+        readsubstances(filepath, dbname)
+
