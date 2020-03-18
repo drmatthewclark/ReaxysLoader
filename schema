@@ -49,18 +49,8 @@ CREATE TABLE reaxys.citation (
     patent_pub_date text,
     abstract text,
     comments text
-);
-
-
---
--- Name: comment; Type: TABLE; Schema: reaxys; Owner: -
---
-
-CREATE TABLE reaxys.comment (
-    id bigint,
-    comment text,
-    type text
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -78,7 +68,8 @@ CREATE UNLOGGED TABLE reaxys.conditions (
     temperature numrange,
     "time" numrange,
     total_volume numrange
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -109,7 +100,8 @@ CREATE TABLE reaxys.molecule (
     cit_id_parent bigint[],
     name text,
     molecule public.mol
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -132,7 +124,8 @@ CREATE TABLE reaxys.rdfile (
     rx_qry4 text,
     rx_qry5 text,
     reaction public.reaction
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -152,7 +145,8 @@ CREATE UNLOGGED TABLE reaxys.reaction (
     metabolite_id bigint[],
     product_id bigint[],
     variations bigint[]
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -168,7 +162,8 @@ CREATE UNLOGGED TABLE reaxys.stages (
     solvents bigint[],
     conditions bigint[],
     metabolites bigint[]
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -226,7 +221,8 @@ CREATE UNLOGGED TABLE reaxys.variation (
     sample_ref text,
     compound_name text,
     equivalents real
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -279,22 +275,8 @@ CREATE UNLOGGED TABLE reaxys.substance (
     sample_ref text[],
     compound_name text[],
     comments text
-);
-
-
---
--- Name: udm; Type: TABLE; Schema: reaxys; Owner: -
---
-
-CREATE TABLE reaxys.udm (
-    minor integer,
-    major integer,
-    revision integer,
-    build integer,
-    database text,
-    sequence bigint,
-    "timestamp" timestamp without time zone
-);
+)
+WITH (autovacuum_enabled='false');
 
 
 --
@@ -366,6 +348,20 @@ ALTER TABLE ONLY reaxys.variation
 --
 
 CREATE INDEX molecule_id_idx ON reaxys.molecule USING btree (id);
+
+
+--
+-- Name: molecule_molecule_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
+
+
+--
+-- Name: rdfile_reaction_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX rdfile_reaction_idx ON reaxys.rdfile USING gist (reaction);
 
 
 --
