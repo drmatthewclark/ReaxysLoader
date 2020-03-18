@@ -4,7 +4,6 @@ debug = False
 
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
-from   psycopg2 import sql
 from psycopg2.extensions import AsIs
 import glob
 import gzip
