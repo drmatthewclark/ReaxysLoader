@@ -15,7 +15,7 @@ from psycopg2.extensions import AsIs
 import glob
 import gzip
 from myhash import myhash
-
+import concurrent.futures 
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
@@ -51,10 +51,8 @@ def readconditions(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    if update:
-        sql =  'insert into reaxys.conditions (%s) values %s on conflict (condition_id) do nothing;'
-    else:
-        sql =  'insert into reaxys.conditions (%s) values %s;'
+
+    sql =  'insert into reaxys.conditions (%s) values %s on conflict (condition_id) do nothing;'
 
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/CONDITIONS'): 
@@ -108,10 +106,8 @@ def readstages(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
-    if update:
-        sql =  'insert into reaxys.stages (%s) values %s on conflict (stage_id) do nothing;'
-    else:
-        sql =  'insert into reaxys.stages (%s) values %s;'
+
+    sql =  'insert into reaxys.stages (%s) values %s on conflict (stage_id) do nothing;'
 
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/STAGES'): 
@@ -152,10 +148,7 @@ def readvariations(fname, dbname):
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
 
-    if update:
-        sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing;'
-    else:
-        sql =  'insert into reaxys.variation (%s) values %s;'
+    sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing;'
 
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
@@ -205,6 +198,7 @@ def readreactions(fname, dbname):
     root = tree.getroot()
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
+
     if update:
         sql =  'insert into reaxys.reaction (%s) values %s on conflict (reaction_id) do nothing';
     else:
@@ -273,6 +267,7 @@ def readsubstances(fname, dbname):
     conn = psql.connect(user=dbname)
     cur = conn.cursor()
     sql =  'insert into reaxys.substance (%s) values %s on CONFLICT (substance_id) do nothing';
+
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
 
@@ -346,9 +341,10 @@ def readcitations(fname, dbname):
 
 go = False
 for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
-        readreactions(filepath, dbname)
-        readconditions(filepath, dbname)
-        readstages(filepath, dbname)
-        readvariations(filepath, dbname)
-        readsubstances(filepath, dbname)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
+        e.submit(readreactions, filepath, dbname)
+        e.submit(readconditions,filepath, dbname)
+        e.submit(readstages,filepath, dbname)
+        e.submit(readvariations, filepath, dbname)
+        e.submit(readsubstances,filepath, dbname)
 
