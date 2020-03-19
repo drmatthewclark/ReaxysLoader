@@ -226,32 +226,36 @@ WITH (autovacuum_enabled='false');
 
 
 --
--- Name: reaxys_conditions; Type: VIEW; Schema: reaxys; Owner: -
+-- Name: rxn_conditions_multistage; Type: VIEW; Schema: reaxys; Owner: -
 --
 
-CREATE VIEW reaxys.reaxys_conditions AS
+CREATE VIEW reaxys.rxn_conditions_multistage AS
  SELECT rdfile.rx_id,
-    reaction.reaction_id,
-    NULL::bigint AS stage_id,
-    variation.variation_id,
-    conditions.condition_id
-   FROM reaxys.rdfile,
-    reaxys.reaction,
-    reaxys.variation,
-    reaxys.conditions
-  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (conditions.condition_id = ANY (variation.conditions)) AND (reaction.reaxys_reaction_id = rdfile.rx_id))
-UNION
- SELECT rdfile.rx_id,
-    reaction.reaction_id,
     stages.stage_id,
+    reaction.reaction_id,
     variation.variation_id,
-    conditions.condition_id
+    unnest(stages.conditions) AS condition_id
    FROM reaxys.rdfile,
     reaxys.reaction,
     reaxys.variation,
-    reaxys.stages,
-    reaxys.conditions
-  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (stages.stage_id = ANY (variation.stages)) AND (conditions.condition_id = ANY (stages.conditions)) AND (reaction.reaxys_reaction_id = rdfile.rx_id));
+    reaxys.stages
+  WHERE ((reaction.reaxys_reaction_id = rdfile.rx_id) AND (variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NOT NULL) AND (stages.stage_id = ANY (variation.stages)));
+
+
+--
+-- Name: rxn_conditions_singlestage; Type: VIEW; Schema: reaxys; Owner: -
+--
+
+CREATE VIEW reaxys.rxn_conditions_singlestage AS
+ SELECT rdfile.rx_id,
+    NULL::text AS stage_id,
+    reaction.reaction_id,
+    variation.variation_id,
+    unnest(variation.conditions) AS condition_id
+   FROM reaxys.rdfile,
+    reaxys.reaction,
+    reaxys.variation
+  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NULL) AND (reaction.reaxys_reaction_id = rdfile.rx_id));
 
 
 --
