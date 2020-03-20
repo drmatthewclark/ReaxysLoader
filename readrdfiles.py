@@ -15,7 +15,9 @@ import rdkit.Chem.rdChemReactions
 
 global conn
 
+
 def readnextRDfile(file):
+    """  read the next reaction from the concatenated file """
     line = '' # file.readline()
     rdfile = ''
     tags = {}
@@ -45,8 +47,12 @@ def readnextRDfile(file):
 global counter 
 counter = 0
 
+
+
 def processRXN(rdfile):
+    """ process the separated RDfile into components, and smiles """
     global counter
+    # header to make molfile parser happy
     header = '' + '\n' + 'GSMACCS-II07189510252D 1   0.00366     0.00000     0' + '\n\n'  + '  0  0  0     0  0            999 V3000' + '\n'
     tail = 'M  END' 
     counter += 1
@@ -112,6 +118,7 @@ def processRXN(rdfile):
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
     sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (%s, %s, %s) on conflict (molecule_id) do nothing'
+
     if data and 'RX_RXRN' in data.keys():
         for i in range(0 , len(data['RX_RXRN'])):
             rid = data['RX_RXRN'][i] 
@@ -121,9 +128,10 @@ def processRXN(rdfile):
                  smiles = reacts[i]
             if 'RX_RCT' in data.keys() and len(data['RX_RCT']) > i:
                 name = data['RX_RCT'][i]
-            #with conn.cursor() as cur:
-                #print(cur.mogrify(sql, (rid, name, smiles)))
-                #cur.execute(sql, (rid, name, smiles))
+
+            with conn.cursor() as cur:
+                print(cur.mogrify(sql, (rid, name, smiles)))
+                cur.execute(sql, (rid, name, smiles))
 
     if data and 'RX_PXRN' in data.keys():
         for i in range(0 , len(data['RX_PXRN'])):
@@ -134,9 +142,10 @@ def processRXN(rdfile):
                  smiles = prods[i]
             if 'RX_PRO' in data.keys() and len(data['RX_PRO']) > i:
                  name = data['RX_PRO'][i]
-            #with conn.cursor() as cur:
-                #print(cur.mogrify(sql, (rid, name, smiles)))
-                #cur.execute(sql, (rid, name, smiles))
+
+            with conn.cursor() as cur:
+                print(cur.mogrify(sql, (rid, name, smiles)))
+                cur.execute(sql, (rid, name, smiles))
 
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
@@ -145,7 +154,10 @@ def processRXN(rdfile):
 
     return data
 
+
+
 def tosmiles(products, reactants):
+    """ create smiles strings for products, reactants, and the reaction """
     prods = list()
     reacts = list()
     try:
@@ -171,6 +183,8 @@ def tosmiles(products, reactants):
        return reacts, prods, sm
     except:
        return None, None, None
+
+
 
 def readrdfiles(fname):
     """ read all of the individual SDFiles from the concatenated SDFile """
