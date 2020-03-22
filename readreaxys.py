@@ -158,7 +158,7 @@ def readvariations(fname, dbname):
             #this set has lists
             for item  in ['CREATION_DATE', 'EXPERIMENT_ID','EXPERIMENT_TYPE','MODIFICATION_DATE','PROJECT_NAME','QUALIFICATION',
                 'SOURCE','DESTINATION','CONCLUSION_PHRASE','CREATED_AT_SITE','DUPLICATE_EXP_REF','PREPARATIVE','ELN_CITATION',
-                'REACTION_SCALE','NEXTMOVE_REACTION_TYPE','RXNO_REACTION_TYPE','ANALYTICAL_DATA_EXISTS', 'CIT_ID']:
+                'REACTION_SCALE','NEXTMOVE_REACTION_TYPE','RXNO_REACTION_TYPE','ANALYTICAL_DATA_EXISTS']:
                 subelem  = elem.find(item)
                 if subelem is not None:
                     tag = subelem.tag
@@ -172,6 +172,15 @@ def readvariations(fname, dbname):
                     ilist = list()
                     for sselem in subelem:
                         tag = getid(sselem)
+                        ilist.append(tag)
+                    data[item] = ilist 
+
+            for item  in [ 'CIT_ID' ]:
+                subelem  = elem.findall(item)
+                if subelem:
+                    ilist = list()
+                    for sselem in subelem:
+                        tag = int(sselem.text)
                         ilist.append(tag)
                     data[item] = ilist 
 
