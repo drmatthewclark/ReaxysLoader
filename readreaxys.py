@@ -1,4 +1,4 @@
-# rmc file release number
+# database to load data to
 dbname='mclark'
 
 # if true will print out the sql statements and other data for debugging
@@ -7,7 +7,7 @@ debug = False
 # allow ignoring already existing primary keys without throwing error.  
 # if update is true then duplicate keys are ignored, but the records are not updated
 # if false will throw an error on key conflict 
-update = False
+update = True
 
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
@@ -16,6 +16,7 @@ import glob
 import gzip
 from myhash import myhash
 import concurrent.futures 
+from readrdfiles import readrdfile
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
@@ -344,16 +345,22 @@ def readcitations(fname, dbname):
     conn.commit()
     conn.close()
 
-# read the citation files
-#for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
-#  readcitations(filepath, 'mclark')
 
-go = False
-for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
-        e.submit(readreactions, filepath, dbname)
-        e.submit(readconditions,filepath, dbname)
-        e.submit(readstages,filepath, dbname)
-        e.submit(readvariations, filepath, dbname)
-        e.submit(readsubstances,filepath, dbname)
+def load():
+    # read the citation files
+    for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
+       readcitations(filepath, dbname)
 
+    go = False
+    for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
+            e.submit(readreactions, filepath, dbname)
+            e.submit(readconditions,filepath, dbname)
+            e.submit(readstages,filepath, dbname)
+            e.submit(readvariations, filepath, dbname)
+            e.submit(readsubstances,filepath, dbname)
+
+    # readrdfiles - the reaction files
+    readrdfile()
+
+load()
