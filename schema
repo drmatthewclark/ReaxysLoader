@@ -26,20 +26,12 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
---
--- Name: acid_chlorid_amine; Type: TABLE; Schema: reaxys; Owner: -
---
-
-CREATE TABLE reaxys.acid_chlorid_amine (
-    rx_id bigint
-);
-
 
 --
 -- Name: citation; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.citation (
+CREATE UNLOGGED TABLE reaxys.citation (
     citation_id bigint NOT NULL,
     type text,
     author text,
@@ -84,7 +76,7 @@ WITH (autovacuum_enabled='false');
 -- Name: molecule; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.molecule (
+CREATE UNLOGGED TABLE reaxys.molecule (
     molecule_id bigint NOT NULL,
     id text,
     molstructure text,
@@ -116,7 +108,7 @@ WITH (autovacuum_enabled='false');
 -- Name: rdfile; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.rdfile (
+CREATE UNLOGGED TABLE reaxys.rdfile (
     rx_id bigint NOT NULL,
     rx_rank integer,
     rx_myd text,
