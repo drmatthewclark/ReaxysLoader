@@ -130,7 +130,8 @@ def processRXN(rdfile):
                 name = data['RX_RCT'][i]
 
             with conn.cursor() as cur:
-                print(cur.mogrify(sql, (rid, name, smiles)))
+                if debug:
+                    print(cur.mogrify(sql, (rid, name, smiles)))
                 cur.execute(sql, (rid, name, smiles))
 
     if data and 'RX_PXRN' in data.keys():
@@ -144,7 +145,8 @@ def processRXN(rdfile):
                  name = data['RX_PRO'][i]
 
             with conn.cursor() as cur:
-                print(cur.mogrify(sql, (rid, name, smiles)))
+                if debug:
+                    print(cur.mogrify(sql, (rid, name, smiles)))
                 cur.execute(sql, (rid, name, smiles))
 
     if 'RX_RCT' in data.keys():
@@ -241,4 +243,3 @@ def readrdfile():
     if go:
         readrdfiles(filepath)
 
-readrdfile()
