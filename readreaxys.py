@@ -351,7 +351,6 @@ def load():
     for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
        readcitations(filepath, dbname)
 
-    go = False
     for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
             e.submit(readreactions, filepath, dbname)
