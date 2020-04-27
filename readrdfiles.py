@@ -236,10 +236,6 @@ def readrdfile():
   """ read the SDFiles. This requires special functions because this is
     not an XML file
   """
-  go = False
   for filepath in glob.iglob('rdf/*.rdf.gz'):
-    #if filepath == 'rdf/rx200061_0089.rdf.gz':
-    go = True
-    if go:
         readrdfiles(filepath)
 
