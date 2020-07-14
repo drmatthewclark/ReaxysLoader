@@ -1,0 +1,116 @@
+
+--
+-- Name: citation citation_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.citation
+    ADD CONSTRAINT citation_pkey PRIMARY KEY (citation_id);
+
+
+--
+-- Name: conditions conditions_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.conditions
+    ADD CONSTRAINT conditions_pkey PRIMARY KEY (condition_id);
+
+
+--
+-- Name: molecule molecule_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.molecule
+    ADD CONSTRAINT molecule_pkey PRIMARY KEY (molecule_id);
+
+
+--
+-- Name: rdfile rdfile_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.rdfile
+    ADD CONSTRAINT rdfile_pkey PRIMARY KEY (rx_id);
+
+
+--
+-- Name: reaction reaction_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.reaction
+    ADD CONSTRAINT reaction_pkey PRIMARY KEY (reaction_id);
+
+
+--
+-- Name: stages stages_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.stages
+    ADD CONSTRAINT stages_pkey PRIMARY KEY (stage_id);
+
+
+--
+-- Name: substance substance_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.substance
+    ADD CONSTRAINT substance_pkey PRIMARY KEY (substance_id);
+
+
+--
+-- Name: variation variation_pkey; Type: CONSTRAINT; Schema: reaxys; Owner: -
+--
+
+ALTER TABLE ONLY reaxys.variation
+    ADD CONSTRAINT variation_pkey PRIMARY KEY (variation_id);
+
+
+--
+-- Name: molecule_id_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX molecule_id_idx ON reaxys.molecule USING btree (id);
+
+
+--
+-- Name: molecule_molecule_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
+
+
+--
+-- Name: rdfile_reaction_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX rdfile_reaction_idx ON reaxys.rdfile USING gist (reaction);
+
+
+--
+-- Name: reaction_reaxys_reaction_id_idx; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX reaction_reaxys_reaction_id_idx ON reaxys.reaction USING btree (reaxys_reaction_id);
+
+
+--
+-- Name: reaxys_id_index; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX reaxys_id_index ON reaxys.substance USING btree (reaxys_id);
+CREATE INDEX yield_index ON reaxys.substance USING btree (yield);
+
+
+--
+-- Name: rx_qry5_index; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX rx_qry5_index ON reaxys.rdfile USING btree (rx_qry5);
+
+
+--
+-- Name: rx_trans_index; Type: INDEX; Schema: reaxys; Owner: -
+--
+
+CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
+
+
+
