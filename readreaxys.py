@@ -4,19 +4,18 @@ dbname='mclark'
 # if true will print out the sql statements and other data for debugging
 debug = False
 
-# allow ignoring already existing primary keys without throwing error.  
-# if update is true then duplicate keys are ignored, but the records are not updated
-# if false will throw an error on key conflict 
-update = True
-
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
 from psycopg2.extensions import AsIs
 import glob
+import tempfile
+import os
+import time
 import gzip
+import concurrent.futures
 from myhash import myhash
-import concurrent.futures 
-from readrdfiles import readrdfile
+from import dedup import writedb
+
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
@@ -30,7 +29,7 @@ def getid(element):
     if id and id.isnumeric() and len(list(element)) == 1:
        return int(id)
     else:
-       text = ''.join(element.itertext()).encode('utf-8')
+       text = ET.tostring(element)
        hashcode = myhash(text)
 
        if debug:
@@ -38,78 +37,73 @@ def getid(element):
        return hashcode
 
 
-def readconditions(fname, dbname):
+def readconditions(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readconditions', fname)
-    tree = ET.parse(gzip.open(fname));
+    print('\treadconditions')
+    tfile = 'conditions.table' 
+    f = open(tfile, 'a')
+    start = time.time() 
+    lines = set()
+
     root = tree.getroot()
-    conn = psql.connect(user=dbname)
+
+    sql =  'insert into reaxys.conditions (%s) values %s;'
     cur = conn.cursor()
-
-    sql =  'insert into reaxys.conditions (%s) values %s on conflict (condition_id) do nothing;'
-
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/CONDITIONS'): 
             data = {}
             data['condition_id'] = getid(elem) 
-
             for condition in ['ATMOSPHERE','PREPARATION','REFLUX']:
                  subelem = elem.findall(condition)
                  if subelem:
-                     for sselem in subelem:
-                         tag = sselem.tag
-                         value = sselem.text
-                         data[tag] = value
+                    for sselem in subelem:
+                        tag = sselem.tag
+                        value = sselem.text
+                        data[tag] = value
     
             #this set has ranges
             for condition in ['PH','PRESSURE','REACTION_MOLARITY','TEMPERATURE','TIME','TOTAL_VOLUME']:
                 subelem = elem.find(condition)
-                minmax = {}
                 if subelem:
-                    for subsubelem in subelem:
-                        tag = subsubelem.tag
-                        value = subsubelem.text
-                        if value == '-INF':
-                          value = '-99999999'
-                        elif value == 'INF':
-                          value = '99999999'
-                        minmax[tag] = value
-                
-                    data[condition] = '[' + minmax['min'] + ',' + minmax['max'] + ']'
+                    mint = subelem.find('min')
+                    maxt = subelem.find('max')
+                    minval = mint.text
+                    maxval = maxt.text
+                    if minval == '-INF':
+                        minval = '-1e100'
+                    if maxval == 'INF':
+                        maxval = '1e100'
+            
+                    array =  '[' + minval + ',' + maxval + ']'
+                    data[condition] = array
  
             columns = data.keys()
             values = [data[column] for column in columns]
-            if debug: 
-                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
-            else:
-                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close()
+            cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+            h = hash(cmd)
+            if not h in lines:
+                lines.add(h)
+                f.write(cmd)
 
-def readstages(fname, dbname):
+    f.close()
+    cur.close()
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+
+def readstages(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readstages', fname)
-    tree = ET.parse(gzip.open(fname));
+    print('\treadstages')
+    tfile = 'stages.table' # tempfile.mkstemp()[1]
+    f = open(tfile, 'a')
+    start = time.time() 
+    lines = set()
     root = tree.getroot()
-    conn = psql.connect(user=dbname)
+
+    sql =  'insert into reaxys.stages (%s) values %s;'
     cur = conn.cursor()
-
-    sql =  'insert into reaxys.stages (%s) values %s on conflict (stage_id) do nothing;'
-
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/STAGES'): 
             data = {}
@@ -127,30 +121,30 @@ def readstages(fname, dbname):
  
             columns = data.keys()
             values = [data[column] for column in columns]
-            if debug:
-                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
-            else:
-                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close()
+            cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"  
+            h = hash(cmd)
+            if not h in lines:
+                lines.add(h)
+                f.write(cmd)
 
-def readvariations(fname, dbname):
+    f.close()
+    cur.close()
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+
+def readvariations(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readvariations',fname)
-    tree = ET.parse(gzip.open(fname));
+    print('\treadvariations')
+    tfile = 'variations.table' #tempfile.mkstemp()[1]
+    f = open(tfile, 'a')
+    start = time.time() 
+    lines = set()
+
     root = tree.getroot()
-    conn = psql.connect(user=dbname)
+
+    sql =  'insert into reaxys.variation (%s) values %s;'
     cur = conn.cursor()
-
-    sql =  'insert into reaxys.variation (%s) values %s on conflict (variation_id) do nothing;'
-
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
             data = {}
@@ -187,32 +181,31 @@ def readvariations(fname, dbname):
 
             columns = data.keys()
             values = [data[column] for column in columns]
-            if debug:
-                print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))) 
-            else:
-                cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close()
+            cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+            h = hash(cmd)
+            if not h  in lines:
+                lines.add(h)
+                f.write(cmd)
+  
+    f.close() 
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    return
 
-def readreactions(fname, dbname):
+
+
+def readreactions(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readreactions ',fname)
-    tree = ET.parse(gzip.open(fname));
+    print('\treadreactions ')
+    tfile = 'reactions.table' #tempfile.mkstemp()[1]
+    f = open(tfile, 'a')
+    start = time.time() 
+    lines = set()
     root = tree.getroot()
-    conn = psql.connect(user=dbname)
-    cur = conn.cursor()
 
-    if update:
-        sql =  'insert into reaxys.reaction (%s) values %s on conflict (reaction_id) do nothing';
-    else:
-        sql =  'insert into reaxys.reaction (%s) values %s';
+    sql =  'insert into reaxys.reaction (%s) values %s;'
+    cur = conn.cursor()
 
     for elem in root.findall('REACTIONS/REACTION'):
         data = {}
@@ -252,31 +245,34 @@ def readreactions(fname, dbname):
 
         columns = data.keys()
         values = [data[column] for column in columns]
-        if debug:
-            print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))) 
-        else:
-            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close()
+        cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+        h = hash(cmd)
+        if not h in lines:
+            lines.add(h)
+            f.write(cmd)
+    
+    f.close()
+    cur.close()
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    return
 
 
 
 
-def readsubstances(fname, dbname):
+def readsubstances(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readsubstances', fname)
-    tree = ET.parse(gzip.open(fname));
+    print('\treadsubstances')
+    tfile = 'substances.table' #tempfile.mkstemp()[1]
+    f = open(tfile, 'a')
+    start = time.time() 
+    lines = set()
+
     root = tree.getroot()
-    conn = psql.connect(user=dbname)
+
+    sql =  'insert into reaxys.substance (%s) values %s;'
     cur = conn.cursor()
-    sql =  'insert into reaxys.substance (%s) values %s on CONFLICT (substance_id) do nothing';
 
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
@@ -298,33 +294,32 @@ def readsubstances(fname, dbname):
 
                     columns = data.keys()
                     values = [data[column] for column in columns]
-                    if debug:
-                        print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
-                    else:
-                        cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close() 
+                    cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n" 
+                    h = hash(cmd)
+                    if not h in lines:
+                        lines.add(h)
+                        f.write(cmd)
+
+    f.close()
+    cur.close()
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)) )
+    return
 
 
-def readcitations(fname, dbname):
+def readcitations(tree, conn):
     """ 
     read an xml file into the designated database
-
-    fname - xml file to read
-    key - field for the object key
-    dbname - name for the database to store data to
-    sql - template sql statement to execute for storing the data
     """
-    print('readcitation', fname)
-    tree = ET.parse(gzip.open(fname));
-    root = tree.getroot()
-    conn = psql.connect(user=dbname)
-    cur = conn.cursor()
+    print('\treadcitation')
+    tfile = 'citations.table' #tempfile.mkstemp()[1]
+    f = open(tfile, 'a')
+    lines = set()
+    start = time.time() 
 
-    if update:
-        sql =  'insert into reaxys.citation (%s) values %s on conflict(citation_id) do nothing;'
-    else:
-        sql =  'insert into reaxys.citation (%s) values %s;'
+    root = tree.getroot()
+ 
+    sql =  'insert into reaxys.citation (%s) values %s;'
+    cur = conn.cursor()
 
     for elem in root.findall('CITATIONS/CITATION'):
         data = {}
@@ -338,28 +333,61 @@ def readcitations(fname, dbname):
 
         columns = data.keys()
         values = [data[column] for column in columns]
-        if debug:
-            print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
-        else:
-            cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
-    conn.commit()
-    conn.close()
+        cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode() + '\n'
+        h = hash(cmd)
+        if not h in lines:
+            lines.add(h)
+            f.write(cmd)
 
+    f.close()
+    cur.close()
+    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    return
+
+
+
+def initdb(conn):
+    drop  = "drop schema reaxys;"
+    cur = conn.cursor()
+    cur.execute(drop)
+    cur.execute(open('loader_schema', 'r').read())
+    conn.commit()
+
+
+def indexdb():
+    cur = conn.cursor()
+    cur.execute(open('loader_index', 'r').read())
+    conn.commit() 
+     
 
 def load():
-    # read the citation files
-    for filepath in glob.iglob('udm-cit/*citations*.xml.gz'):
-       readcitations(filepath, dbname)
+    
+    conn = psql.connect(user=dbname)
+    
+    for f in glob.iglob('*.table'):
+        os.remove(f)
+    
+    for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):
+        print("file: ", filepath)
+        tree = ET.parse(gzip.open(filepath));
+        readcitations(tree, conn)
 
-    for filepath in glob.iglob('udm-rea/*reactions*.xml.gz'):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
-            e.submit(readreactions, filepath, dbname)
-            e.submit(readconditions,filepath, dbname)
-            e.submit(readstages,filepath, dbname)
-            e.submit(readvariations, filepath, dbname)
-            e.submit(readsubstances,filepath, dbname)
 
-    # readrdfiles - the reaction files
-    readrdfile()
+    threads=10
+    tlist = []
+    e =  concurrent.futures.ThreadPoolExecutor(max_workers=threads)
+    for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
+       print("file: ", filepath)
+       tree = ET.parse(gzip.open(filepath));
+       tlist.append(e.submit(readreactions, tree, conn))
+       tlist.append(e.submit(readconditions, tree, conn))
+       tlist.append(e.submit(readstages, tree, conn))
+       tlist.append(e.submit(readvariations, tree, conn))
+       tlist.append(e.submit(readsubstances, tree, conn))
+       concurrent.futures.wait(tlist, timeout=None, return_when=concurrent.futures.ALL_COMPLETED)
+
+    for filepath in glob.iglob('*.table'):
+        writedb(filepath, conn)
+
 
 load()
