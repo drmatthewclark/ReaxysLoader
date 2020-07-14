@@ -1,0 +1,285 @@
+-
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 11.7
+-- Dumped by pg_dump version 11.2
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: reaxys; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA reaxys;
+
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+
+--
+-- Name: citation; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.citation (
+    citation_id bigint NOT NULL,
+    type text,
+    author text,
+    title text,
+    journal text,
+    year text,
+    vol text,
+    page text,
+    keyword text,
+    doi text,
+    patent_country text,
+    patent_number text,
+    patent_assignee text,
+    patent_kind_code text,
+    patent_pub_date text,
+    abstract text,
+    comments text
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: conditions; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.conditions (
+    condition_id bigint NOT NULL,
+    atmosphere text,
+    ph numrange,
+    preparation text,
+    pressure numrange,
+    reaction_molarity numrange,
+    reflux text,
+    temperature numrange,
+    "time" numrange,
+    total_volume numrange
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: molecule; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.molecule (
+    molecule_id bigint NOT NULL,
+    id text,
+    molstructure text,
+    mw real,
+    clp real,
+    psa real,
+    hev integer,
+    rtb integer,
+    hbd integer,
+    hba integer,
+    noc integer,
+    rng integer,
+    cc_id text,
+    cas text[],
+    comments text[],
+    identifiers text[],
+    links text[],
+    synonyms text[],
+    calculated text[],
+    cit_id bigint[],
+    cit_id_parent bigint[],
+    name text,
+    molecule public.mol
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: rdfile; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.rdfile (
+    rx_id bigint NOT NULL,
+    rx_rank integer,
+    rx_myd text,
+    rx_typ text,
+    rx_rxrn bigint[],
+    rx_pxrn bigint[],
+    rxnsmiles text,
+    rx_trans text,
+    rx_qry0 text,
+    rx_qry1 text,
+    rx_qry2 text,
+    rx_qry3 text,
+    rx_qry4 text,
+    rx_qry5 text,
+    reaction public.reaction
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: reaction; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.reaction (
+    reaction_id bigint NOT NULL,
+    reaxys_reaction_id bigint,
+    rxnstructure text,
+    rank integer,
+    mw_largest_product real,
+    sort_creation_date date,
+    sort_reaction_scale real,
+    sort_total_volume real,
+    reactant_id bigint[],
+    metabolite_id bigint[],
+    product_id bigint[],
+    variations bigint[]
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: stages; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.stages (
+    stage_id bigint NOT NULL,
+    reactants bigint[],
+    products bigint[],
+    reagents bigint[],
+    catalysts bigint[],
+    solvents bigint[],
+    conditions bigint[],
+    metabolites bigint[]
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: variation; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.variation (
+    variation_id bigint NOT NULL,
+    creation_date date,
+    experiment_id text,
+    experiment_type text,
+    modification_date date,
+    project_name text,
+    qualification text,
+    source text,
+    destination text,
+    conclusion_phrase text,
+    created_at_site text,
+    duplicate_exp_ref text,
+    preparative boolean,
+    eln_citation text,
+    reaction_scale real,
+    nextmove_reaction_type text,
+    rxno_reaction_type text,
+    analytical_data_exists boolean,
+    technology text[],
+    scientist text[],
+    resp_scientist text,
+    keywords text[],
+    reactants bigint[],
+    products bigint[],
+    reagents bigint[],
+    catalysts bigint[],
+    solvents bigint[],
+    conditions bigint[],
+    metabolites bigint[],
+    stages bigint[],
+    comments text[],
+    identifiers text[],
+    links text[],
+    groups text[],
+    animals text[],
+    cit_id bigint[],
+    excretion text,
+    route text,
+    species text,
+    amount real,
+    color text,
+    conversion real,
+    form text,
+    volume real,
+    purity real,
+    enantiomeric_purity real,
+    sample_id text,
+    sample_ref text,
+    compound_name text,
+    equivalents real
+)
+WITH (autovacuum_enabled='false');
+
+
+--
+-- Name: rxn_conditions_multistage; Type: VIEW; Schema: reaxys; Owner: -
+--
+
+CREATE VIEW reaxys.rxn_conditions_multistage AS
+ SELECT rdfile.rx_id,
+    stages.stage_id,
+    reaction.reaction_id,
+    variation.variation_id,
+    unnest(stages.conditions) AS condition_id
+   FROM reaxys.rdfile,
+    reaxys.reaction,
+    reaxys.variation,
+    reaxys.stages
+  WHERE ((reaction.reaxys_reaction_id = rdfile.rx_id) AND (variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NOT NULL) AND (stages.stage_id = ANY (variation.stages)));
+
+
+--
+-- Name: rxn_conditions_singlestage; Type: VIEW; Schema: reaxys; Owner: -
+--
+
+CREATE VIEW reaxys.rxn_conditions_singlestage AS
+ SELECT rdfile.rx_id,
+    NULL::text AS stage_id,
+    reaction.reaction_id,
+    variation.variation_id,
+    unnest(variation.conditions) AS condition_id
+   FROM reaxys.rdfile,
+    reaxys.reaction,
+    reaxys.variation
+  WHERE ((variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NULL) AND (reaction.reaxys_reaction_id = rdfile.rx_id));
+
+
+--
+-- Name: substance; Type: TABLE; Schema: reaxys; Owner: -
+--
+
+CREATE TABLE reaxys.substance (
+    substance_id bigint NOT NULL,
+    reaxys_id bigint,
+    name text,
+    amount real,
+    form text,
+    color text,
+    yield real,
+    conversion real,
+    purity real,
+    enantiomeric_purity real,
+    volume real,
+    equivalents real,
+    sample_id text[],
+    sample_ref text[],
+    compound_name text[],
+    comments text
+)
+WITH (autovacuum_enabled='false');
+
+
