@@ -1,31 +1,48 @@
 # rmc file release number
 dbname='mclark'
 debug = False
-
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
 from psycopg2.extensions import AsIs
 import glob
 import gzip
-
+import os
 # for rdkit Mol to Smiles
 from rdkit import Chem
 from rdkit import RDLogger
 import rdkit.Chem.rdChemReactions
+import hashlib
+from dedup import writedb
 
-global conn
+global SFILE 
+global hashset
+SFILE = None
+filename='structures.table2'
+hashset = set()
 
-
-def readnextRDfile(file):
+lastline = None
+def readnextRDfile(file, conn):
     """  read the next reaction from the concatenated file """
     line = '' # file.readline()
     rdfile = ''
     tags = {}
     blankcount = 0
+    global lastline
 
     line = file.readline().rstrip()
+
+    # these lines only at beginning of file
+    if (line.startswith('$RDFILE') or line.startswith('$DATM')):
+        line == readline()
+
     if line == '':
         return None
+    
+    if line.startswith('$RFMT $RIREG'):
+        rdfile = line
+        line = file.readline()
+    else:
+        rdfile = lastline
 
     while not line.startswith('$RFMT $RIREG'):
         line = file.readline()
@@ -40,7 +57,8 @@ def readnextRDfile(file):
         if blankcount > 2:
             break
 
-    tags = processRXN(rdfile)
+    lastline = line
+    tags = processRXN(rdfile, conn)
     return tags # dictionary 
 
 
@@ -49,7 +67,7 @@ counter = 0
 
 
 
-def processRXN(rdfile):
+def processRXN(rdfile, conn):
     """ process the separated RDfile into components, and smiles """
     global counter
     # header to make molfile parser happy
@@ -86,10 +104,12 @@ def processRXN(rdfile):
             endctab = None
             if state == 'reactant':
                 currentstructure += tail
+                # add molfile to list
                 reactants.append(currentstructure)
                 currentstructure = header
             elif state == 'product':
                 currentstructure += tail
+                # add molfile to list
                 products.append(currentstructure) 
                 currentstructure = header
             elif state is None:
@@ -115,12 +135,14 @@ def processRXN(rdfile):
                 data[dtype[14:]] = datum
             dtype = None
 
+# end of loop over lines, process them
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
-    sql = 'insert into reaxys.molecule (molecule_id, name, molstructure) values (%s, %s, %s) on conflict (molecule_id) do nothing'
+    sql = 'insert into reaxys.molecule (%s) values %s;'
 
-    if data and 'RX_RXRN' in data.keys():
-        for i in range(0 , len(data['RX_RXRN'])):
+    if data and reacts and 'RX_RXRN' in data.keys():
+        assert len(data['RX_RXRN']) == len(reacts)
+        for i in range(0 , len(reacts)):
             rid = data['RX_RXRN'][i] 
             smiles = None
             name = None
@@ -128,13 +150,12 @@ def processRXN(rdfile):
                  smiles = reacts[i]
             if 'RX_RCT' in data.keys() and len(data['RX_RCT']) > i:
                 name = data['RX_RCT'][i]
+            if smiles is not None:
+                dbdata = {'molecule_id' : rid, 'name' : name, 'molstructure' : smiles}
+                writerecord(conn, sql, dbdata)
 
-            with conn.cursor() as cur:
-                if debug:
-                    print(cur.mogrify(sql, (rid, name, smiles)))
-                cur.execute(sql, (rid, name, smiles))
-
-    if data and 'RX_PXRN' in data.keys():
+    if data and prods and 'RX_PXRN' in data.keys():
+        assert len(data['RX_PXRN']) == len(prods)
         for i in range(0 , len(data['RX_PXRN'])):
             rid = data['RX_PXRN'][i]
             smiles = None
@@ -143,17 +164,15 @@ def processRXN(rdfile):
                  smiles = prods[i]
             if 'RX_PRO' in data.keys() and len(data['RX_PRO']) > i:
                  name = data['RX_PRO'][i]
-
-            with conn.cursor() as cur:
-                if debug:
-                    print(cur.mogrify(sql, (rid, name, smiles)))
-                cur.execute(sql, (rid, name, smiles))
+            if smiles is not None:
+                dbdata = {'molecule_id' : rid, 'name' : name, 'molstructure' : smiles}
+                writerecord(conn, sql, dbdata)
 
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
     if 'RX_PRO' in data.keys():
         del data['RX_PRO']
-
+    #print("\twrote %7i molecule records" % (moleculecount))
     return data
 
 
@@ -188,54 +207,69 @@ def tosmiles(products, reactants):
 
 
 
-def readrdfiles(fname):
+def readrdfile(fname, conn):
     """ read all of the individual SDFiles from the concatenated SDFile """
-    print('readrdfiless', fname)
+    print('readrdfiles: ', fname)
     lg = RDLogger.logger()
     lg.setLevel(RDLogger.CRITICAL)
     count = 0
-    global conn
-    conn=psql.connect(user=dbname)
     with gzip.open(fname, 'rt') as file:
         # remove header lines
         file.readline()
         file.readline()
         # loop over concatenated files
+        sql = 'insert into reaxys.rdfile (%s) values %s;'
         while True:
-            rdrecord = readnextRDfile(file)
+            rdrecord = readnextRDfile(file, conn)
             if not rdrecord:
                 break;
             if 'RX_ID' in rdrecord.keys():
-                writedb(conn, rdrecord)
-                count += 1
-                if count % 10000000 == 0:
-                   conn.commit()
+                count += writerecord(conn, sql, rdrecord)
 
-    conn.commit()
-    conn.close()
-    print("wrote ", count, " records")
+    print("\twrote %7i reaction records" %(count))
 
 
 
-
-def writedb(conn, data):
+def writerecord(conn, sql, data):
      """ write a SDFile record the database """
-
-     sql = 'insert into reaxys.rdfile (%s) values %s on conflict (rx_id) do nothing'
+     global SFILE
+     global hashset
+     count = 0
      with conn.cursor() as cur:
          columns = data.keys()
          values = [data[column] for column in columns]
-         if debug:
-             print(cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))))
-         else:
-             cur.execute(sql, (AsIs(','.join(columns)), tuple(values)))
+         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))
+         h = hash(cmd)
+
+         if not h in hashset:
+            SFILE.write(cmd.decode('utf-8')+'\n')
+            hashset.add(h) 
+            count += 1
+
+     return count
 
 
-
-def readrdfile():
+            
+def readrdfiles():
   """ read the SDFiles. This requires special functions because this is
     not an XML file
   """
-  for filepath in glob.iglob('rdf/*.rdf.gz'):
-        readrdfiles(filepath)
+  global SFILE
+  SFILE =  open(filename,"w")   
+  oldlen = 0
 
+  conn=psql.connect(user=dbname)
+
+  for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+        readrdfile(filepath, conn)
+        newlen = len(hashset)
+        new = newlen - oldlen
+        print("\tadded %6i total records: %6i" %( new, newlen))
+        oldlen = len(hashset)
+
+  SFILE.close()
+
+  writedb(filename, conn)
+  conn.close()
+
+readrdfiles()
