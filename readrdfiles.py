@@ -73,7 +73,7 @@ def processRXN(rdfile, conn):
     """ process the separated RDfile into components, and smiles """
     global counter
     # header to make molfile parser happy
-    header = '' + '\n' + 'GSMACCS-II07189510252D 1   0.00366     0.00000     0' + '\n\n'  + '  0  0  0     0  0            999 V3000' + '\n'
+    header = '\n' + 'GSMACCS-II07189510252D 1   0.00366     0.00000     0' + '\n\n'  + '  0  0  0     0  0            999 V3000' + '\n'
     tail = 'M  END' 
     counter += 1
     reactants = list()
@@ -187,11 +187,11 @@ def tosmiles(products, reactants):
     smiles = ''
     for r in reactants:
         try:
-            mol = Chem.MolFromMolBlock(r)
-            reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical = True)
+            mol = Chem.MolFromMolBlock(r, sanitize=False)
+            reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
         except:
             with open(efilename, 'a') as file:
-                file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
+                file.write("molecule\n%s\n error %s line %i\n" % ( r, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
             reactant_smiles = ''
 
         reacts.append(reactant_smiles)
@@ -202,11 +202,11 @@ def tosmiles(products, reactants):
 
     for p in products:
         try:
-            mol = Chem.MolFromMolBlock(p)
+            mol = Chem.MolFromMolBlock(p, sanitize=False)
             product_smiles = Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)
         except:
             with open(efilename, 'a') as file:
-                file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
+                file.write("molecule\n%s\n error %s line %i\n" % ( p, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
             product_smiles = ''
 
         prods.append(product_smiles)
@@ -218,7 +218,7 @@ def tosmiles(products, reactants):
     except:
         sm = None
         with open(efilename, 'a') as file:
-            file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
+            file.write("molecule\n%s\n error %s line %i\n" % ( smiles, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
 
     return reacts, prods, sm
 
