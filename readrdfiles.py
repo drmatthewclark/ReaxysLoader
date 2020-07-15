@@ -7,6 +7,7 @@ from psycopg2.extensions import AsIs
 import glob
 import gzip
 import os
+import sys
 # for rdkit Mol to Smiles
 from rdkit import Chem
 from rdkit import RDLogger
@@ -18,6 +19,7 @@ global SFILE
 global hashset
 SFILE = None
 filename='structures.table2'
+efilename='structures.errors'
 hashset = set()
 
 lastline = None
@@ -141,7 +143,8 @@ def processRXN(rdfile, conn):
     sql = 'insert into reaxys.molecule (%s) values %s;'
 
     if data and reacts and 'RX_RXRN' in data.keys():
-        assert len(data['RX_RXRN']) == len(reacts)
+        numreagents= len(data['RX_RXRN'])
+        assert numreagents >= len(reacts)
         for i in range(0 , len(reacts)):
             rid = data['RX_RXRN'][i] 
             smiles = None
@@ -155,7 +158,7 @@ def processRXN(rdfile, conn):
                 writerecord(conn, sql, dbdata)
 
     if data and prods and 'RX_PXRN' in data.keys():
-        assert len(data['RX_PXRN']) == len(prods)
+        assert len(data['RX_PXRN']) >= len(prods)
         for i in range(0 , len(data['RX_PXRN'])):
             rid = data['RX_PXRN'][i]
             smiles = None
@@ -181,30 +184,43 @@ def tosmiles(products, reactants):
     """ create smiles strings for products, reactants, and the reaction """
     prods = list()
     reacts = list()
-    try:
-       smiles = ''
-       for r in reactants:
-           mol = Chem.MolFromMolBlock(r)
-           reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical = True)
-           reacts.append(reactant_smiles)
-           smiles += reactant_smiles + '.'
+    smiles = ''
+    for r in reactants:
+        try:
+            mol = Chem.MolFromMolBlock(r)
+            reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical = True)
+        except:
+            with open(efilename, 'a') as file:
+                file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
+            reactant_smiles = ''
 
-       smiles = smiles[:-1]
-       smiles += '>>'
+        reacts.append(reactant_smiles)
+        smiles += reactant_smiles + '.'
 
-       for p in products:
-           mol = Chem.MolFromMolBlock(p)
-           product_smiles = Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)
-           prods.append(product_smiles)
-           smiles += product_smiles + '.'
-       smiles = smiles[:-1]
-   
-       rxn = Chem.rdChemReactions.ReactionFromSmarts(smiles)
-       sm = Chem.rdChemReactions.ReactionToSmiles(rxn)
-       return reacts, prods, sm
+    smiles = smiles[:-1]
+    smiles += '>>'
+
+    for p in products:
+        try:
+            mol = Chem.MolFromMolBlock(p)
+            product_smiles = Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)
+        except:
+            with open(efilename, 'a') as file:
+                file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
+            product_smiles = ''
+
+        prods.append(product_smiles)
+        smiles += product_smiles + '.'
+        smiles = smiles[:-1]
+    try:   
+        rxn = Chem.rdChemReactions.ReactionFromSmarts(smiles)
+        sm = Chem.rdChemReactions.ReactionToSmiles(rxn)
     except:
-       return None, None, None
+        sm = None
+        with open(efilename, 'a') as file:
+            file.write("error %s %s line %i\n" % ( mol, sys.exc_info()[0], sys.exc_info()[2].tb_lineno)  )
 
+    return reacts, prods, sm
 
 
 def readrdfile(fname, conn):
