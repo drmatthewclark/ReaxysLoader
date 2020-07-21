@@ -82,23 +82,34 @@ def processRXN(rdfile, conn):
     state = ''
     dtype = None
     data = {}
+    regno = 0
 
     for line in rdfile.splitlines():
         endctab = None
         if line.startswith('M  V30 BEGIN REACTANT'): # reactant section
             state = 'reactant'  # the structures are reactants
+            regno = 0
             continue
         if line.startswith('M  V30 END REACTANT'):
             state = None   # reactant section has ended
             continue
         if line.startswith('M  V30 BEGIN PRODUCT'):
             state = 'product'  # molecules are now products
+            regno = 0
             continue
         if line.startswith('M  V30 END PRODUCT'):
             state = None  # product section has ended
             continue
         if line.startswith('M  V30 END CTAB'):
             endctab = True 
+        if line.startswith('M  V30 COUNTS'):
+            equals = line.find('=')
+            if equals != -1:
+                #registy no. of current molecule
+                regno = int(line[equals+1:].strip())
+            else:
+                regno = 0
+#   M  V30 COUNTS 14 14 0 0 0 REGNO=747939
         if state:
             currentstructure += line + '\n'
        
@@ -107,12 +118,12 @@ def processRXN(rdfile, conn):
             if state == 'reactant':
                 currentstructure += tail
                 # add molfile to list
-                reactants.append(currentstructure)
+                reactants.append((regno,currentstructure))
                 currentstructure = header
             elif state == 'product':
                 currentstructure += tail
                 # add molfile to list
-                products.append(currentstructure) 
+                products.append((regno,currentstructure))
                 currentstructure = header
             elif state is None:
                 print("error parsing RDfile ")
@@ -138,38 +149,31 @@ def processRXN(rdfile, conn):
             dtype = None
 
 # end of loop over lines, process them
+# data is a dictionary with elements like
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
     sql = 'insert into reaxys.molecule (%s) values %s;'
+    for i, (regno, smiles) in enumerate(reacts):
+        name = ''
+        for j in range(0 , len(data['RX_RXRN'])):
+            rxn = data['RX_RXRN'][j]
+            if rxn == regno:
+                name = data['RX_RCT'][j]
+                break
 
-    if data and reacts and 'RX_RXRN' in data.keys():
-        numreagents= len(data['RX_RXRN'])
-        assert numreagents >= len(reacts)
-        for i in range(0 , len(reacts)):
-            rid = data['RX_RXRN'][i] 
-            smiles = None
-            name = None
-            if reacts is not None and len(reacts) > i:
-                 smiles = reacts[i]
-            if 'RX_RCT' in data.keys() and len(data['RX_RCT']) > i:
-                name = data['RX_RCT'][i]
-            if smiles is not None:
-                dbdata = {'molecule_id' : rid, 'name' : name, 'molstructure' : smiles}
-                writerecord(conn, sql, dbdata)
+        dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
+        writerecord(conn, sql, dbdata)
 
-    if data and prods and 'RX_PXRN' in data.keys():
-        assert len(data['RX_PXRN']) >= len(prods)
-        for i in range(0 , len(data['RX_PXRN'])):
-            rid = data['RX_PXRN'][i]
-            smiles = None
-            name = None
-            if prods is not None and len(prods) > i:
-                 smiles = prods[i]
-            if 'RX_PRO' in data.keys() and len(data['RX_PRO']) > i:
-                 name = data['RX_PRO'][i]
-            if smiles is not None:
-                dbdata = {'molecule_id' : rid, 'name' : name, 'molstructure' : smiles}
-                writerecord(conn, sql, dbdata)
+    for i, (regno, smiles) in enumerate(prods):
+        name = ''
+        for j in range(0 , len(data['RX_PXRN'])):
+            rxn = data['RX_PXRN'][j]
+            if rxn == regno:
+                name = data['RX_PRO'][j]
+                break
+
+        dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
+        writerecord(conn, sql, dbdata)
 
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
@@ -182,36 +186,39 @@ def processRXN(rdfile, conn):
 
 def tosmiles(products, reactants):
     """ create smiles strings for products, reactants, and the reaction """
+    """ pruducts, reactatnts are lists of tuples of regno,molfile """
     prods = list()
     reacts = list()
     smiles = ''
-    for r in reactants:
+    for regno,r in reactants:
         try:
             mol = Chem.MolFromMolBlock(r, sanitize=False)
-            reactant_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+            reactant_smiles = (regno, Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)))
         except:
             with open(efilename, 'a') as file:
                 file.write("molecule\n%s\n error %s line %i\n" % ( r, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
             reactant_smiles = ''
 
-        reacts.append(reactant_smiles)
-        smiles += reactant_smiles + '.'
+        if reactant_smiles != '':
+            reacts.append(reactant_smiles)
+            smiles += reactant_smiles[1] + '.'
 
     smiles = smiles[:-1]
     smiles += '>>'
 
-    for p in products:
+    for regno, p in products:
         try:
             mol = Chem.MolFromMolBlock(p, sanitize=False)
-            product_smiles = Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)
+            product_smiles = (regno, Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)))
         except:
             with open(efilename, 'a') as file:
                 file.write("molecule\n%s\n error %s line %i\n" % ( p, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
             product_smiles = ''
 
-        prods.append(product_smiles)
-        smiles += product_smiles + '.'
-        smiles = smiles[:-1]
+        if product_smiles != '':
+            prods.append(product_smiles)
+            smiles += product_smiles[1]  + '.'
+            smiles = smiles[:-1]
     try:   
         rxn = Chem.rdChemReactions.ReactionFromSmarts(smiles)
         sm = Chem.rdChemReactions.ReactionToSmiles(rxn)
