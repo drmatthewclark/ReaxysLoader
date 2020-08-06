@@ -14,8 +14,10 @@ import time
 import gzip
 import concurrent.futures
 from myhash import myhash
-from import dedup import writedb
+import dedup 
+from dedup import writedb
 
+CHUNKSIZE = 50000
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
@@ -42,10 +44,9 @@ def readconditions(tree, conn):
     read an xml file into the designated database
     """
     print('\treadconditions')
-    tfile = 'conditions.table' 
-    f = open(tfile, 'a')
     start = time.time() 
     lines = set()
+    insertcache = set()
 
     root = tree.getroot()
 
@@ -85,21 +86,27 @@ def readconditions(tree, conn):
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
-                f.write(cmd)
+                insertcache.add(cmd)
+                if len(insertcache) > CHUNKSIZE:
+                   cur.execute( '\n'.join(insertcache))
+                   insertcache.clear() 
 
-    f.close()
+
+    cur.execute( '\n'.join(insertcache))
     cur.close()
+    conn.commit()
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+
+
 
 def readstages(tree, conn):
     """ 
     read an xml file into the designated database
     """
     print('\treadstages')
-    tfile = 'stages.table' # tempfile.mkstemp()[1]
-    f = open(tfile, 'a')
     start = time.time() 
     lines = set()
+    insertcache = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys.stages (%s) values %s;'
@@ -125,10 +132,15 @@ def readstages(tree, conn):
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
-                f.write(cmd)
+                insertcache.add(cmd)
+                if len(insertcache) > CHUNKSIZE:
+                   cur.execute( '\n'.join(insertcache))
+                   insertcache.clear() 
 
-    f.close()
+
+    cur.execute( '\n'.join(insertcache))
     cur.close()
+    conn.commit()
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
 
 def readvariations(tree, conn):
@@ -136,10 +148,9 @@ def readvariations(tree, conn):
     read an xml file into the designated database
     """
     print('\treadvariations')
-    tfile = 'variations.table' #tempfile.mkstemp()[1]
-    f = open(tfile, 'a')
     start = time.time() 
     lines = set()
+    insertcache = set()
 
     root = tree.getroot()
 
@@ -183,11 +194,15 @@ def readvariations(tree, conn):
             values = [data[column] for column in columns]
             cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
             h = hash(cmd)
-            if not h  in lines:
+            if not h in lines:
                 lines.add(h)
-                f.write(cmd)
-  
-    f.close() 
+                insertcache.add(cmd)
+                if len(insertcache) > CHUNKSIZE:
+                   cur.execute( '\n'.join(insertcache))
+                   insertcache.clear() 
+
+
+    cur.execute( '\n'.join(insertcache))
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
@@ -198,10 +213,9 @@ def readreactions(tree, conn):
     read an xml file into the designated database
     """
     print('\treadreactions ')
-    tfile = 'reactions.table' #tempfile.mkstemp()[1]
-    f = open(tfile, 'a')
     start = time.time() 
     lines = set()
+    insertcache = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys.reaction (%s) values %s;'
@@ -247,12 +261,18 @@ def readreactions(tree, conn):
         values = [data[column] for column in columns]
         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
         h = hash(cmd)
+
         if not h in lines:
-            lines.add(h)
-            f.write(cmd)
-    
-    f.close()
+           lines.add(h)
+           insertcache.add(cmd)
+           if len(insertcache) > CHUNKSIZE:
+              cur.execute( '\n'.join(insertcache))
+              insertcache.clear() 
+
+
+    cur.execute( '\n'.join(insertcache))
     cur.close()
+    conn.commit()
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
@@ -264,11 +284,9 @@ def readsubstances(tree, conn):
     read an xml file into the designated database
     """
     print('\treadsubstances')
-    tfile = 'substances.table' #tempfile.mkstemp()[1]
-    f = open(tfile, 'a')
     start = time.time() 
     lines = set()
-
+    insertcache = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys.substance (%s) values %s;'
@@ -298,10 +316,15 @@ def readsubstances(tree, conn):
                     h = hash(cmd)
                     if not h in lines:
                         lines.add(h)
-                        f.write(cmd)
+                        insertcache.add(cmd)
+                        if len(insertcache) > CHUNKSIZE:
+                            cur.execute( '\n'.join(insertcache))
+                            insertcache.clear() 
 
-    f.close()
+
+    cur.execute( '\n'.join(insertcache))
     cur.close()
+    conn.commit()
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)) )
     return
 
@@ -311,9 +334,8 @@ def readcitations(tree, conn):
     read an xml file into the designated database
     """
     print('\treadcitation')
-    tfile = 'citations.table' #tempfile.mkstemp()[1]
-    f = open(tfile, 'a')
     lines = set()
+    insertcache = set()
     start = time.time() 
 
     root = tree.getroot()
@@ -336,44 +358,57 @@ def readcitations(tree, conn):
         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode() + '\n'
         h = hash(cmd)
         if not h in lines:
-            lines.add(h)
-            f.write(cmd)
+           lines.add(h)
+           insertcache.add(cmd)
+           if len(insertcache) > CHUNKSIZE:
+              cur.execute( '\n'.join(insertcache))
+              insertcache.clear() 
 
-    f.close()
+
+    cur.execute( '\n'.join(insertcache))
     cur.close()
+    conn.commit()
     print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
 
 
 def initdb(conn):
-    drop  = "drop schema reaxys;"
-    cur = conn.cursor()
-    cur.execute(drop)
-    cur.execute(open('loader_schema', 'r').read())
+    drop  = "drop schema reaxys cascade;"
+
+    try :
+      cur = conn.cursor() 
+      cur.execute(drop)
+      print("dropped existing schema")
+    except:
+      print("creating schema")
+
+    cur.close()
+    conn.commit()
+
+    cur = conn.cursor() 
+    cur.execute(open('../loader/loader_schema', 'r').read())
     conn.commit()
 
 
 def indexdb():
     cur = conn.cursor()
-    cur.execute(open('loader_index', 'r').read())
+    cur.execute(open('../loader/loader_index', 'r').read())
     conn.commit() 
      
 
 def load():
     
     conn = psql.connect(user=dbname)
-    
-    for f in glob.iglob('*.table'):
-        os.remove(f)
-    
+    initdb(conn)
+ 
     for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):
         print("file: ", filepath)
         tree = ET.parse(gzip.open(filepath));
         readcitations(tree, conn)
 
 
-    threads=10
+    threads=1
     tlist = []
     e =  concurrent.futures.ThreadPoolExecutor(max_workers=threads)
     for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
@@ -386,8 +421,6 @@ def load():
        tlist.append(e.submit(readsubstances, tree, conn))
        concurrent.futures.wait(tlist, timeout=None, return_when=concurrent.futures.ALL_COMPLETED)
 
-    for filepath in glob.iglob('*.table'):
-        writedb(filepath, conn)
-
+    indexdb()
 
 load()
