@@ -15,14 +15,17 @@ import rdkit.Chem.rdChemReactions
 import hashlib
 from dedup import writedb
 
-global SFILE 
 global hashset
-SFILE = None
-filename='structures.table2'
+global insertcache
+
+CHUNKSIZE = 10000
+
 efilename='structures.errors'
 hashset = set()
+insertcache = set()
 
 lastline = None
+
 def readnextRDfile(file, conn):
     """  read the next reaction from the concatenated file """
     line = '' # file.readline()
@@ -86,29 +89,34 @@ def processRXN(rdfile, conn):
 
     for line in rdfile.splitlines():
         endctab = None
-        if line.startswith('M  V30 BEGIN REACTANT'): # reactant section
-            state = 'reactant'  # the structures are reactants
-            regno = 0
-            continue
-        if line.startswith('M  V30 END REACTANT'):
-            state = None   # reactant section has ended
-            continue
-        if line.startswith('M  V30 BEGIN PRODUCT'):
-            state = 'product'  # molecules are now products
-            regno = 0
-            continue
-        if line.startswith('M  V30 END PRODUCT'):
-            state = None  # product section has ended
-            continue
-        if line.startswith('M  V30 END CTAB'):
-            endctab = True 
-        if line.startswith('M  V30 COUNTS'):
-            equals = line.find('=')
-            if equals != -1:
-                #registy no. of current molecule
-                regno = int(line[equals+1:].strip())
-            else:
+        # check this first for performance
+        if line.startswith("M  "):
+            if line.startswith('M  V30 BEGIN RE'): # reactant section
+                state = 'reactant'  # the structures are reactants
                 regno = 0
+                continue
+            elif line.startswith('M  V30 END RE'):
+                state = None   # reactant section has ended
+                continue
+            elif line.startswith('M  V30 BEGIN PR'):
+                state = 'product'  # molecules are now products
+                regno = 0
+                continue
+            elif line.startswith('M  V30 END PR'):
+                state = None  # product section has ended
+                continue
+            elif line.startswith('M  V30 END CT'):
+                endctab = True 
+            elif line.startswith('M  V30 CO'):
+                equals = line.find('=')
+                if equals != -1:
+                    #registy no. of current molecule
+                    regno = int(line[equals+1:].strip())
+                else:
+                    regno = 0
+
+
+# example:
 #   M  V30 COUNTS 14 14 0 0 0 REGNO=747939
         if state:
             currentstructure += line + '\n'
@@ -249,25 +257,37 @@ def readrdfile(fname, conn):
             if 'RX_ID' in rdrecord.keys():
                 count += writerecord(conn, sql, rdrecord)
 
+        with conn.cursor() as cur:
+            cur.execute( '\n'.join(insertcache))
+
+        insertcache.clear()
+        conn.commit()
+
     print("\twrote %7i reaction records" %(count))
 
 
 
 def writerecord(conn, sql, data):
      """ write a SDFile record the database """
-     global SFILE
      global hashset
+     global insertcache
+
      count = 0
      with conn.cursor() as cur:
          columns = data.keys()
          values = [data[column] for column in columns]
-         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values)))
+         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8')
          h = hash(cmd)
 
          if not h in hashset:
-            SFILE.write(cmd.decode('utf-8')+'\n')
             hashset.add(h) 
+            insertcache.add(cmd)
             count += 1
+
+            if len(insertcache) > CHUNKSIZE:
+                cur.execute( '\n'.join(insertcache))
+                insertcache.clear()
+                conn.commit()
 
      return count
 
@@ -277,8 +297,7 @@ def readrdfiles():
   """ read the SDFiles. This requires special functions because this is
     not an XML file
   """
-  global SFILE
-  SFILE =  open(filename,"w")   
+  global insertcache
   oldlen = 0
 
   conn=psql.connect(user=dbname)
@@ -289,10 +308,9 @@ def readrdfiles():
         new = newlen - oldlen
         print("\tadded %6i total records: %6i" %( new, newlen))
         oldlen = len(hashset)
-
-  SFILE.close()
-
-  writedb(filename, conn)
+  
+  conn.commit()
   conn.close()
+
 
 readrdfiles()
