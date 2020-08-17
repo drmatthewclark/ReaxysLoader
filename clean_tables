@@ -1,9 +1,0 @@
-#!/bin/bash
-
-# clean tables for fresh load
-#
-for table in citation conditions molecule rdfile reaction stages substance variation; do
-   psql -c "drop table ${table};"
-done
-
-
