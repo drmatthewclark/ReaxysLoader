@@ -14,8 +14,6 @@ import time
 import gzip
 import concurrent.futures
 from myhash import myhash
-import dedup 
-from dedup import writedb
 
 CHUNKSIZE = 50000
 
