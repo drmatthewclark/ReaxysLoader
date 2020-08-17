@@ -13,7 +13,6 @@ from rdkit import Chem
 from rdkit import RDLogger
 import rdkit.Chem.rdChemReactions
 import hashlib
-from dedup import writedb
 
 global hashset
 global insertcache
