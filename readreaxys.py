@@ -389,7 +389,7 @@ def initdb(conn):
     conn.commit()
 
 
-def indexdb():
+def indexdb(conn):
     cur = conn.cursor()
     cur.execute(open('../loader/loader_index', 'r').read())
     conn.commit() 
@@ -419,6 +419,6 @@ def load():
        tlist.append(e.submit(readsubstances, tree, conn))
        concurrent.futures.wait(tlist, timeout=None, return_when=concurrent.futures.ALL_COMPLETED)
 
-    indexdb()
+    indexdb(conn)
 
 load()
