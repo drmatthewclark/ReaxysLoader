@@ -68,7 +68,10 @@ ALTER TABLE ONLY reaxys.variation
 --
 
 CREATE INDEX molecule_id_idx ON reaxys.molecule USING btree (id);
+ALTER TABLE reaxys.molecule ADD COLUMN fprint bfp;
 
+UPDATE reaxys.molecule set molecule = mol_from_smiles(molstructure::cstring);
+UPDATE reaxys.molecule set fprint = rdkit_fp(molecule);
 
 --
 -- Name: molecule_molecule_idx; Type: INDEX; Schema: reaxys; Owner: -
