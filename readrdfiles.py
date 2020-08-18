@@ -164,7 +164,7 @@ def processRXN(rdfile, conn):
         name = ''
         for j in range(0 , len(data['RX_RXRN'])):
             rxn = data['RX_RXRN'][j]
-            if rxn == regno:
+            if rxn == regno and 'RX_RCT' in data.keys():
                 name = data['RX_RCT'][j]
                 break
 
@@ -175,7 +175,7 @@ def processRXN(rdfile, conn):
         name = ''
         for j in range(0 , len(data['RX_PXRN'])):
             rxn = data['RX_PXRN'][j]
-            if rxn == regno:
+            if rxn == regno and 'RX_PRO' in data.keys():
                 name = data['RX_PRO'][j]
                 break
 
@@ -301,7 +301,9 @@ def readrdfiles():
 
   conn=psql.connect(user=dbname)
 
-  for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+ # for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+  for i, filepath in enumerate('rdf/rx200721_0078.rdf.gz'):
+
         readrdfile(filepath, conn)
         newlen = len(hashset)
         new = newlen - oldlen
