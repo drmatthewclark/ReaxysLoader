@@ -301,7 +301,7 @@ def readrdfiles():
 
   conn=psql.connect(user=dbname)
 
-  for i, filepath in enumerate(glob.iglob('rdf/*721_0078.rdf.gz')):
+  for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
         readrdfile(filepath, conn)
         newlen = len(hashset)
         new = newlen - oldlen
