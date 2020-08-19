@@ -116,4 +116,4 @@ CREATE INDEX rx_qry5_index ON reaxys.rdfile USING btree (rx_qry5);
 CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
 
 
-
+VACUUM;
