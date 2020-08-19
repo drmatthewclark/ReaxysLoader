@@ -16,6 +16,7 @@ import concurrent.futures
 from myhash import myhash
 
 CHUNKSIZE = 50000
+lines = set()
 
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
@@ -41,9 +42,7 @@ def readconditions(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadconditions')
     start = time.time() 
-    lines = set()
     insertcache = set()
 
     root = tree.getroot()
@@ -93,7 +92,7 @@ def readconditions(tree, conn):
     cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    print("\treadconditions load took %5.2f %6i records" % ((time.time() - start), len(lines)))
 
 
 
@@ -101,9 +100,7 @@ def readstages(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadstages')
     start = time.time() 
-    lines = set()
     insertcache = set()
     root = tree.getroot()
 
@@ -139,15 +136,13 @@ def readstages(tree, conn):
     cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    print("\treadstages load took %5.2f %6i records" % ((time.time() - start), len(lines)))
 
 def readvariations(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadvariations')
     start = time.time() 
-    lines = set()
     insertcache = set()
 
     root = tree.getroot()
@@ -201,7 +196,7 @@ def readvariations(tree, conn):
 
 
     cur.execute( '\n'.join(insertcache))
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    print("\treadvariations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
 
@@ -210,9 +205,7 @@ def readreactions(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadreactions ')
     start = time.time() 
-    lines = set()
     insertcache = set()
     root = tree.getroot()
 
@@ -259,7 +252,6 @@ def readreactions(tree, conn):
         values = [data[column] for column in columns]
         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
         h = hash(cmd)
-
         if not h in lines:
            lines.add(h)
            insertcache.add(cmd)
@@ -267,11 +259,9 @@ def readreactions(tree, conn):
               cur.execute( '\n'.join(insertcache))
               insertcache.clear() 
 
-
     cur.execute( '\n'.join(insertcache))
-    cur.close()
     conn.commit()
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    print("\treadreactions load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
 
@@ -281,9 +271,7 @@ def readsubstances(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadsubstances')
     start = time.time() 
-    lines = set()
     insertcache = set()
     root = tree.getroot()
 
@@ -323,7 +311,7 @@ def readsubstances(tree, conn):
     cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)) )
+    print("\treadsubstances load took %5.2f %6i records" % ((time.time() - start), len(lines)) )
     return
 
 
@@ -331,8 +319,6 @@ def readcitations(tree, conn):
     """ 
     read an xml file into the designated database
     """
-    print('\treadcitation')
-    lines = set()
     insertcache = set()
     start = time.time() 
 
@@ -366,7 +352,7 @@ def readcitations(tree, conn):
     cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
-    print("\tload took %5.2f %6i records" % ((time.time() - start), len(lines)))
+    print("\treadcitations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
 
@@ -390,6 +376,8 @@ def initdb(conn):
 
 
 def indexdb(conn):
+
+    conn.commit()
     cur = conn.cursor()
     cur.execute(open('../loader/loader_index', 'r').read())
     conn.commit() 
@@ -405,8 +393,8 @@ def load():
         tree = ET.parse(gzip.open(filepath));
         readcitations(tree, conn)
 
-
-    threads=1
+    lines.clear()
+    threads=4
     tlist = []
     e =  concurrent.futures.ThreadPoolExecutor(max_workers=threads)
     for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
@@ -418,7 +406,5 @@ def load():
        tlist.append(e.submit(readvariations, tree, conn))
        tlist.append(e.submit(readsubstances, tree, conn))
        concurrent.futures.wait(tlist, timeout=None, return_when=concurrent.futures.ALL_COMPLETED)
-
-    indexdb(conn)
 
 load()
