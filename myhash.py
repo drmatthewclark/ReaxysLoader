@@ -15,6 +15,6 @@ def myhash(text):
     # if greater than max 64bit signed int, make negative. python doesn't wrap on overflow
     # because it never overflows
     if (result > 0x7FFFFFFFFFFFFFFF):
-        result = -(result  >> 1)
+        result = -(result & 0x7FFFFFFFFFFFFFFF)
 
     return result
