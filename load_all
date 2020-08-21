@@ -1,0 +1,10 @@
+#!/bin/bash -x
+# script to perform all
+# operations
+#
+ROOT=`dirname "$(readlink -f "$0")"`
+PSQL=/usr/bin/psql
+
+python3 $ROOT/readreaxys.py
+python3 $ROOT/readrdfiles.py
+$PSQL  < $ROOT/loader_index
