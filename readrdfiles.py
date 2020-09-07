@@ -165,7 +165,9 @@ def processRXN(rdfile, conn):
         for j in range(0 , len(data['RX_RXRN'])):
             rxn = data['RX_RXRN'][j]
             if rxn == regno and 'RX_RCT' in data.keys():
-                name = data['RX_RCT'][j]
+                names = data['RX_RCT']
+                if j < len(names): 
+                        name = names[j]
                 break
 
         dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
@@ -176,7 +178,9 @@ def processRXN(rdfile, conn):
         for j in range(0 , len(data['RX_PXRN'])):
             rxn = data['RX_PXRN'][j]
             if rxn == regno and 'RX_PRO' in data.keys():
-                name = data['RX_PRO'][j]
+                names = data['RX_PRO']
+                if j < len(names):
+                        name = names[j]
                 break
 
         dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
@@ -189,7 +193,18 @@ def processRXN(rdfile, conn):
     #print("\twrote %7i molecule records" % (moleculecount))
     return data
 
+# centralize this function
+def createSmiles(molblock):
 
+    smiles = None
+    if molblock is None:
+        return smiles
+
+    mol = Chem.MolFromMolBlock(molblock, strictParsing=False, sanitize=True)
+    if mol is not None:
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
+    return smiles
 
 def tosmiles(products, reactants):
     """ create smiles strings for products, reactants, and the reaction """
@@ -198,15 +213,9 @@ def tosmiles(products, reactants):
     reacts = list()
     smiles = ''
     for regno,r in reactants:
-        try:
-            mol = Chem.MolFromMolBlock(r, sanitize=False)
-            reactant_smiles = (regno, Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)))
-        except:
-            with open(efilename, 'a') as file:
-                file.write("molecule\n%s\n error %s line %i\n" % ( r, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
-            reactant_smiles = ''
+        reactant_smiles = (regno, createSmiles(r)) 
 
-        if reactant_smiles != '':
+        if reactant_smiles != (regno, None):
             reacts.append(reactant_smiles)
             smiles += reactant_smiles[1] + '.'
 
@@ -214,27 +223,15 @@ def tosmiles(products, reactants):
     smiles += '>>'
 
     for regno, p in products:
-        try:
-            mol = Chem.MolFromMolBlock(p, sanitize=False)
-            product_smiles = (regno, Chem.CanonSmiles(Chem.MolToSmiles(mol, isomericSmiles = True, canonical = True)))
-        except:
-            with open(efilename, 'a') as file:
-                file.write("molecule\n%s\n error %s line %i\n" % ( p, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
-            product_smiles = ''
+        product_smiles = (regno, createSmiles(p)) 
 
-        if product_smiles != '':
+        if product_smiles != (regno, None):
             prods.append(product_smiles)
             smiles += product_smiles[1]  + '.'
-            smiles = smiles[:-1]
-    try:   
-        rxn = Chem.rdChemReactions.ReactionFromSmarts(smiles)
-        sm = Chem.rdChemReactions.ReactionToSmiles(rxn)
-    except:
-        sm = None
-        with open(efilename, 'a') as file:
-            file.write("molecule\n%s\n error %s line %i\n" % ( smiles, sys.exc_info()[1], sys.exc_info()[2].tb_lineno)  )
 
-    return reacts, prods, sm
+    smiles = smiles[:-1]
+
+    return reacts, prods, smiles
 
 
 def readrdfile(fname, conn):
@@ -297,16 +294,15 @@ def readrdfiles():
     not an XML file
   """
   global insertcache
-  oldlen = 0
 
   conn=psql.connect(user=dbname)
 
   for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+        oldlen = len(hashset)
         readrdfile(filepath, conn)
         newlen = len(hashset)
         new = newlen - oldlen
         print("\tadded %6i total records: %6i" %( new, newlen))
-        oldlen = len(hashset)
   
   conn.commit()
   conn.close()
