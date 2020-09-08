@@ -136,7 +136,10 @@ def processRXN(rdfile, conn):
                 print("error parsing RDfile ")
 
         if line.startswith('$DTYPE'):
-            dtype = line[line.find('RX'):]
+            rx = line.find('RX')
+            dtype = line[rx:]
+            prefix = line[12:rx-1] # RCT(2) to track number and name
+            #$DTYPE ROOT:RCT(2):RX_RXRN
 
         if dtype and line.startswith('$DATUM'):
             datum = line[7:]
@@ -144,11 +147,11 @@ def processRXN(rdfile, conn):
             if dtype.endswith('RCT') or dtype.endswith('PRO'):
                 if not dtype in data.keys():
                     data[dtype] = list()
-                data[dtype].append(datum) 
+                data[dtype].append((prefix,datum))  # name
             elif dtype.endswith('XRN'):
                 if not dtype in data.keys():
                     data[dtype] = list()
-                data[dtype].append(int(datum)) 
+                data[dtype].append((prefix, int(datum))) # reg number
             elif dtype.startswith('RX'):
                 data[dtype] = datum
             elif dtype.startswith('TRANSFORM'):
@@ -163,11 +166,13 @@ def processRXN(rdfile, conn):
     for i, (regno, smiles) in enumerate(reacts):
         name = ''
         for j in range(0 , len(data['RX_RXRN'])):
-            rxn = data['RX_RXRN'][j]
+            prefix, rxn = data['RX_RXRN'][j]
             if rxn == regno and 'RX_RCT' in data.keys():
                 names = data['RX_RCT']
-                if j < len(names): 
-                        name = names[j]
+                for j in range(0, len(names)):
+                    pfix, tname = names[j]
+                    if ( pfix == prefix):
+                         name = tname
                 break
 
         dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
@@ -176,21 +181,36 @@ def processRXN(rdfile, conn):
     for i, (regno, smiles) in enumerate(prods):
         name = ''
         for j in range(0 , len(data['RX_PXRN'])):
-            rxn = data['RX_PXRN'][j]
+            prefix, rxn = data['RX_PXRN'][j]
             if rxn == regno and 'RX_PRO' in data.keys():
                 names = data['RX_PRO']
-                if j < len(names):
-                        name = names[j]
+                for j in range(0, len(names)):
+                        pfix, tname  = names[j]
+                        if (pfix == prefix):
+                            print(names[j], (prefix, rxn))
+                            name = tname
                 break
 
         dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
         writerecord(conn, sql, dbdata)
 
+    # remove the names, those are in the molecule table
     if 'RX_RCT' in data.keys():
         del data['RX_RCT']
     if 'RX_PRO' in data.keys():
         del data['RX_PRO']
+
+    # switch tuples to registry numbers
+    for i in range(0, len(data['RX_PXRN'])):
+        prefix, rxn = data['RX_PXRN'][i]
+        data['RX_PXRN'][i] = rxn
+        
+    for i in range(0, len(data['RX_RXRN'])):
+        prefix, rxn = data['RX_RXRN'][i]
+        data['RX_RXRN'][i] = rxn
+
     #print("\twrote %7i molecule records" % (moleculecount))
+
     return data
 
 # centralize this function
@@ -199,12 +219,16 @@ def createSmiles(molblock):
     smiles = None
     if molblock is None:
         return smiles
+    try:
+        mol = Chem.MolFromMolBlock(molblock, strictParsing=False, sanitize=True)
+        if mol is not None:
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
 
-    mol = Chem.MolFromMolBlock(molblock, strictParsing=False, sanitize=True)
-    if mol is not None:
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+    except:
+        pass
 
     return smiles
+
 
 def tosmiles(products, reactants):
     """ create smiles strings for products, reactants, and the reaction """
@@ -253,8 +277,8 @@ def readrdfile(fname, conn):
             if 'RX_ID' in rdrecord.keys():
                 count += writerecord(conn, sql, rdrecord)
 
-        with conn.cursor() as cur:
-            cur.execute( '\n'.join(insertcache))
+        #with conn.cursor() as cur:
+        #    cur.execute( '\n'.join(insertcache))
 
         insertcache.clear()
         conn.commit()
@@ -279,9 +303,9 @@ def writerecord(conn, sql, data):
             hashset.add(h) 
             insertcache.add(cmd)
             count += 1
-
+            print(cmd)
             if len(insertcache) > CHUNKSIZE:
-                cur.execute( '\n'.join(insertcache))
+                #cur.execute( '\n'.join(insertcache))
                 insertcache.clear()
                 conn.commit()
 
