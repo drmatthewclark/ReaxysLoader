@@ -277,8 +277,8 @@ def readrdfile(fname, conn):
             if 'RX_ID' in rdrecord.keys():
                 count += writerecord(conn, sql, rdrecord)
 
-        #with conn.cursor() as cur:
-        #    cur.execute( '\n'.join(insertcache))
+        with conn.cursor() as cur:
+            cur.execute( '\n'.join(insertcache))
 
         insertcache.clear()
         conn.commit()
@@ -305,7 +305,7 @@ def writerecord(conn, sql, data):
             count += 1
             print(cmd)
             if len(insertcache) > CHUNKSIZE:
-                #cur.execute( '\n'.join(insertcache))
+                cur.execute( '\n'.join(insertcache))
                 insertcache.clear()
                 conn.commit()
 
