@@ -356,36 +356,9 @@ def readcitations(tree, conn):
 
 
 
-def initdb(conn):
-    drop  = "drop schema reaxys cascade;"
-
-    try :
-      cur = conn.cursor() 
-      cur.execute(drop)
-      print("dropped existing schema")
-    except:
-      print("creating schema")
-
-    cur.close()
-    conn.commit()
-
-    cur = conn.cursor() 
-    cur.execute(open('../loader/loader_schema', 'r').read())
-    conn.commit()
-
-
-def indexdb(conn):
-
-    conn.commit()
-    cur = conn.cursor()
-    cur.execute(open('../loader/loader_index', 'r').read())
-    conn.commit() 
-     
-
 def load():
     
     conn = psql.connect(user=dbname)
-    initdb(conn)
  
     for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):
         print("file: ", filepath)
