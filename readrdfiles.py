@@ -16,13 +16,14 @@ import hashlib
 
 global hashset
 global insertcache
+index = 0
 
-CHUNKSIZE = 10000
+CHUNKSIZE = 20000
+TEST_MODE = True
 
 efilename='structures.errors'
 hashset = set()
 insertcache = set()
-
 lastline = None
 
 def readnextRDfile(file, conn):
@@ -63,6 +64,8 @@ def readnextRDfile(file, conn):
 
     lastline = line
     tags = processRXN(rdfile, conn)
+    tags['rx_rdfile'] = rdfile[:-1] #trim last char
+    tags['rx_file_id'] = index
     return tags # dictionary 
 
 
@@ -174,8 +177,11 @@ def processRXN(rdfile, conn):
                     if ( pfix == prefix):
                          name = tname
                 break
-
-        dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
+       
+        (regno,unpacked) = reactants[i]
+             
+        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked }
+ 
         writerecord(conn, sql, dbdata)
 
     for i, (regno, smiles) in enumerate(prods):
@@ -187,11 +193,12 @@ def processRXN(rdfile, conn):
                 for j in range(0, len(names)):
                         pfix, tname  = names[j]
                         if (pfix == prefix):
-                            print(names[j], (prefix, rxn))
                             name = tname
                 break
 
-        dbdata = {'molecule_id' : regno, 'name' : name, 'molstructure' : smiles}
+        (regno,unpacked) = products[i]
+
+        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked }
         writerecord(conn, sql, dbdata)
 
     # remove the names, those are in the molecule table
@@ -259,6 +266,7 @@ def tosmiles(products, reactants):
 
 
 def readrdfile(fname, conn):
+
     """ read all of the individual SDFiles from the concatenated SDFile """
     print('readrdfiles: ', fname)
     lg = RDLogger.logger()
@@ -276,14 +284,30 @@ def readrdfile(fname, conn):
                 break;
             if 'RX_ID' in rdrecord.keys():
                 count += writerecord(conn, sql, rdrecord)
-
-        with conn.cursor() as cur:
-            cur.execute( '\n'.join(insertcache))
-
+        
+        if not TEST_MODE:
+            with conn.cursor() as cur:
+                cur.execute( '\n'.join(insertcache))
+        
         insertcache.clear()
         conn.commit()
 
     print("\twrote %7i reaction records" %(count))
+
+
+"""
+  wrapper for hash to remove sdfile from hashing 
+  so that it is not considered for uniquifying records
+
+"""
+def hashrecord(record):
+
+    if type(record) is dict and 'sdfile' in record.keys():
+        temp = record.copy() # python is object oriented
+        del temp['sdfile']
+        return hash(temp)
+
+    return hash(record)
 
 
 
@@ -297,15 +321,21 @@ def writerecord(conn, sql, data):
          columns = data.keys()
          values = [data[column] for column in columns]
          cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8')
-         h = hash(cmd)
+         if TEST_MODE:
+            print("--start record")
+            print(cmd)
+            print("--end record")
+
+         h = hashrecord(cmd)
 
          if not h in hashset:
             hashset.add(h) 
             insertcache.add(cmd)
             count += 1
-            print(cmd)
             if len(insertcache) > CHUNKSIZE:
-                cur.execute( '\n'.join(insertcache))
+                if not TEST_MODE:
+                    cur.execute( '\n'.join(insertcache))
+
                 insertcache.clear()
                 conn.commit()
 
@@ -318,10 +348,14 @@ def readrdfiles():
     not an XML file
   """
   global insertcache
-
+  global index
   conn=psql.connect(user=dbname)
+  key = "_"
 
   for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+        index = os.path.basename(filepath)
+        index = int(index[index.find(key) + len(key):-7 ])
+        print('file index', index)
         oldlen = len(hashset)
         readrdfile(filepath, conn)
         newlen = len(hashset)
