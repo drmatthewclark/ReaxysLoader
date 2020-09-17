@@ -19,7 +19,7 @@ global insertcache
 index = 0
 
 CHUNKSIZE = 20000
-TEST_MODE = True
+TEST_MODE = False
 
 efilename='structures.errors'
 hashset = set()
