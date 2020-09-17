@@ -12,7 +12,6 @@ import tempfile
 import os
 import time
 import gzip
-import concurrent.futures
 from myhash import myhash
 
 CHUNKSIZE = 50000
@@ -394,17 +393,14 @@ def load():
         readcitations(tree, conn)
 
     lines.clear()
-    threads=4
     tlist = []
-    e =  concurrent.futures.ThreadPoolExecutor(max_workers=threads)
     for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
        print("file: ", filepath)
        tree = ET.parse(gzip.open(filepath));
-       tlist.append(e.submit(readreactions, tree, conn))
-       tlist.append(e.submit(readconditions, tree, conn))
-       tlist.append(e.submit(readstages, tree, conn))
-       tlist.append(e.submit(readvariations, tree, conn))
-       tlist.append(e.submit(readsubstances, tree, conn))
-       concurrent.futures.wait(tlist, timeout=None, return_when=concurrent.futures.ALL_COMPLETED)
+       readreactions(tree, conn)
+       readconditions(tree, conn)
+       readstages(tree, conn)
+       readvariations(tree, conn)
+       readsubstances(tree, conn)
 
 load()
