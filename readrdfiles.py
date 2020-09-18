@@ -296,7 +296,6 @@ def hashrecord(record):
 
     if 'sdfile' in record:
         temp = record.split("\n")[0]
-        print('temp', temp)
         return hash(temp)
 
     return hash(record)
