@@ -165,35 +165,28 @@ def processRXN(rdfile, conn):
 # data is a dictionary with elements like
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
-    sql = 'insert into reaxys.molecule (%s) values %s;'
+      
     for i, (regno, smiles) in enumerate(reacts):
-        name = ''
-        for j in range(0 , len(data['RX_RXRN'])):
-            prefix, rxn = data['RX_RXRN'][j]
-            if rxn == regno and 'RX_RCT' in data.keys():
-                names = data['RX_RCT']
-                for j in range(0, len(names)):
-                    pfix, tname = names[j]
-                    if ( pfix == prefix):
-                         name = tname
-                break
-       
+        for (rxprefix, rxn) in data['RX_RXRN']:
+            if rxn == regno:
+                for (rctprefix, tname) in data['RX_RCT']:
+                    if rctprefix == rxprefix:
+                        name = tname
+                        break
+ 
         (regno,unpacked) = reactants[i]
         dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked, 'rx_file_id': index}
  
         writerecord(conn, sql, dbdata)
 
+
     for i, (regno, smiles) in enumerate(prods):
-        name = ''
-        for j in range(0 , len(data['RX_PXRN'])):
-            prefix, rxn = data['RX_PXRN'][j]
-            if rxn == regno and 'RX_PRO' in data.keys():
-                names = data['RX_PRO']
-                for j in range(0, len(names)):
-                        pfix, tname  = names[j]
-                        if (pfix == prefix):
-                            name = tname
-                break
+        for (rxprefix, rxn) in data['RX_PXRN']:
+            if rxn == regno:
+                for (rctprefix, tname) in data['RX_PRO']:
+                    if rctprefix == rxprefix:
+                        name = tname
+                        break
 
         (regno,unpacked) = products[i]
 
@@ -222,7 +215,7 @@ def processRXN(rdfile, conn):
 # centralize this function
 def createSmiles(molblock):
 
-    smiles = None
+    smiles = '' 
     if molblock is None:
         return smiles
     try:
