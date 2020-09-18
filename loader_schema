@@ -71,7 +71,8 @@ WITH (autovacuum_enabled='false');
 
 CREATE TABLE reaxys.molecule (
     molecule_id bigint NOT NULL,
-    molstructure text,
+    smiles text,
+    sdfile text,
     mw real,
     clp real,
     psa real,
