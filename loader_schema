@@ -92,6 +92,7 @@ CREATE TABLE reaxys.molecule (
     cit_id bigint[],
     cit_id_parent bigint[],
     name text,
+    rx_file_id integer,
     molecule public.mol
 )
 WITH (autovacuum_enabled='false');
@@ -108,6 +109,7 @@ CREATE TABLE reaxys.rdfile (
     rx_typ text,
     rx_rxrn bigint[],
     rx_pxrn bigint[],
+    rx_rdfile text,
     rxnsmiles text,
     rx_trans text,
     rx_qry0 text,
@@ -116,6 +118,7 @@ CREATE TABLE reaxys.rdfile (
     rx_qry3 text,
     rx_qry4 text,
     rx_qry5 text,
+    rx_file_id integer,
     reaction public.reaction
 )
 WITH (autovacuum_enabled='false');
