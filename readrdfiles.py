@@ -295,11 +295,12 @@ def readrdfile(fname, conn):
 def hashrecord(record):
 
     if 'sdfile' in record:
-        temp = record
-        temp = record[:temp.find('/n')]
+        temp = record.split("\n")[0]
+        print('temp', temp)
         return hash(temp)
 
     return hash(record)
+
 
 
 def writerecord(conn, sql, data):
