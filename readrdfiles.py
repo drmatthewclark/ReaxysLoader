@@ -302,13 +302,12 @@ def readrdfile(fname, conn):
 """
 def hashrecord(record):
 
-    if type(record) is dict and 'sdfile' in record.keys():
-        temp = record.copy() # python is object oriented
-        del temp['sdfile']
+    if 'sdfile' in record:
+        temp = record
+        temp = record[:temp.rfind(',')]
         return hash(temp)
 
     return hash(record)
-
 
 
 def writerecord(conn, sql, data):
