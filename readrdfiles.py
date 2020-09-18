@@ -179,8 +179,7 @@ def processRXN(rdfile, conn):
                 break
        
         (regno,unpacked) = reactants[i]
-             
-        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked }
+        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked, 'rx_file_id': index}
  
         writerecord(conn, sql, dbdata)
 
@@ -198,7 +197,7 @@ def processRXN(rdfile, conn):
 
         (regno,unpacked) = products[i]
 
-        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked }
+        dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked, 'rx_file_id': index}
         writerecord(conn, sql, dbdata)
 
     # remove the names, those are in the molecule table
@@ -304,7 +303,7 @@ def hashrecord(record):
 
     if 'sdfile' in record:
         temp = record
-        temp = record[:temp.rfind(',')]
+        temp = record[:temp.find('/n')]
         return hash(temp)
 
     return hash(record)
