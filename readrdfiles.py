@@ -88,6 +88,7 @@ def processRXN(rdfile, conn):
     dtype = None
     data = {}
     regno = 0
+    msql = 'insert into reaxys.molecule (%s) values %s;'
 
     for line in rdfile.splitlines():
         endctab = None
@@ -177,8 +178,7 @@ def processRXN(rdfile, conn):
         (regno,unpacked) = reactants[i]
         dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked, 'rx_file_id': index}
  
-        writerecord(conn, sql, dbdata)
-
+        writerecord(conn, msql, dbdata)
 
     for i, (regno, smiles) in enumerate(prods):
         for (rxprefix, rxn) in data['RX_PXRN']:
@@ -191,7 +191,7 @@ def processRXN(rdfile, conn):
         (regno,unpacked) = products[i]
 
         dbdata = {'molecule_id' : regno, 'name' : name, 'smiles' : smiles, 'sdfile' : unpacked, 'rx_file_id': index}
-        writerecord(conn, sql, dbdata)
+        writerecord(conn, msql, dbdata)
 
     # remove the names, those are in the molecule table
     if 'RX_RCT' in data.keys():
