@@ -166,7 +166,7 @@ def processRXN(rdfile, conn):
 # data is a dictionary with elements like
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
     
-      
+    name = ''  
     for i, (regno, smiles) in enumerate(reacts):
         for (rxprefix, rxn) in data['RX_RXRN']:
             if rxn == regno:
@@ -180,6 +180,7 @@ def processRXN(rdfile, conn):
  
         writerecord(conn, msql, dbdata)
 
+    name = ''
     for i, (regno, smiles) in enumerate(prods):
         for (rxprefix, rxn) in data['RX_PXRN']:
             if rxn == regno:
