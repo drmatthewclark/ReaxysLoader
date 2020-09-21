@@ -8,6 +8,8 @@ import glob
 import gzip
 import os
 import sys
+import time
+
 # for rdkit Mol to Smiles
 from rdkit import Chem
 from rdkit import RDLogger
@@ -18,13 +20,33 @@ global hashset
 global insertcache
 index = 0
 
-CHUNKSIZE = 20000
+CHUNKSIZE = 50000
 TEST_MODE = False
 
 efilename='structures.errors'
 hashset = set()
 insertcache = set()
 lastline = None
+counts = {}
+counts['molecule'] = 0
+counts['reaction'] = 0
+counts['other'] = 0
+
+rireg = len('$RFMT $RIREG')
+
+
+def wait(conn):
+    while True:
+        state = conn.poll()
+        if state == psql.extensions.POLL_OK:
+            break
+        elif state == psql.extensions.POLL_WRITE:
+            pass
+        elif state == psql.extensions.POLL_READ:
+            pass
+        else:
+            raise psql.OperationalError("poll() returned %s" % state)
+
 
 def readnextRDfile(file, conn):
     """  read the next reaction from the concatenated file """
@@ -43,15 +65,15 @@ def readnextRDfile(file, conn):
     if line == '':
         return None
     
-    if line.startswith('$RFMT $RIREG'):
+    if line[:rireg] =='$RFMT $RIREG':
         rdfile = line
         line = file.readline()
     else:
         rdfile = lastline
 
-    while not line.startswith('$RFMT $RIREG'):
+    while not line[:rireg] == '$RFMT $RIREG':
         line = file.readline()
-        if not line.startswith('$RFMT $RIREG'):
+        if not line[:rireg] == '$RFMT $RIREG':
             rdfile = rdfile + line
         # python file reading is brain dead and returns an empty string
         # at the EOF instad of  None or any other EOF marker so we have to
@@ -85,6 +107,7 @@ def processRXN(rdfile, conn):
     products = list()
     currentstructure = header
     state = ''
+    name = '' 
     dtype = None
     data = {}
     regno = 0
@@ -142,8 +165,7 @@ def processRXN(rdfile, conn):
         if line.startswith('$DTYPE'):
             rx = line.find('RX')
             dtype = line[rx:]
-            prefix = line[12:rx-1] # RCT(2) to track number and name
-            #$DTYPE ROOT:RCT(2):RX_RXRN
+            prefix = line[:rx] 
 
         if dtype and line.startswith('$DATUM'):
             datum = line[7:]
@@ -165,11 +187,11 @@ def processRXN(rdfile, conn):
 # end of loop over lines, process them
 # data is a dictionary with elements like
     reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
-    
-    name = ''  
+
     for i, (regno, smiles) in enumerate(reacts):
         for (rxprefix, rxn) in data['RX_RXRN']:
-            if rxn == regno:
+            if rxn == regno and 'RX_RCT' in data.keys():
+                name = ''
                 for (rctprefix, tname) in data['RX_RCT']:
                     if rctprefix == rxprefix:
                         name = tname
@@ -180,10 +202,11 @@ def processRXN(rdfile, conn):
  
         writerecord(conn, msql, dbdata)
 
-    name = ''
+ 
     for i, (regno, smiles) in enumerate(prods):
         for (rxprefix, rxn) in data['RX_PXRN']:
-            if rxn == regno:
+            if rxn == regno and 'RX_PRO' in data.keys():
+                name = ''
                 for (rctprefix, tname) in data['RX_PRO']:
                     if rctprefix == rxprefix:
                         name = tname
@@ -209,14 +232,13 @@ def processRXN(rdfile, conn):
         prefix, rxn = data['RX_RXRN'][i]
         data['RX_RXRN'][i] = rxn
 
-    #print("\twrote %7i molecule records" % (moleculecount))
-
     return data
 
 # centralize this function
 def createSmiles(molblock):
 
     smiles = '' 
+
     if molblock is None:
         return smiles
     try:
@@ -236,11 +258,11 @@ def tosmiles(products, reactants):
     prods = list()
     reacts = list()
     smiles = ''
+
     for regno,r in reactants:
         reactant_smiles = (regno, createSmiles(r)) 
-
-        if reactant_smiles != (regno, None):
-            reacts.append(reactant_smiles)
+        reacts.append(reactant_smiles)
+        if reactant_smiles[1] != '':
             smiles += reactant_smiles[1] + '.'
 
     smiles = smiles[:-1]
@@ -248,10 +270,9 @@ def tosmiles(products, reactants):
 
     for regno, p in products:
         product_smiles = (regno, createSmiles(p)) 
-
-        if product_smiles != (regno, None):
-            prods.append(product_smiles)
-            smiles += product_smiles[1]  + '.'
+        prods.append(product_smiles)
+        if product_smiles[1] != '':
+            smiles += product_smiles[1] + '.'
 
     smiles = smiles[:-1]
 
@@ -281,11 +302,11 @@ def readrdfile(fname, conn):
         if not TEST_MODE:
             with conn.cursor() as cur:
                 cur.execute( '\n'.join(insertcache))
-        
+                wait(cur.connection)
         insertcache.clear()
         conn.commit()
 
-    print("\twrote %7i reaction records" %(count))
+    print("\tprocessed %7i reaction records" %(count))
 
 
 """
@@ -307,8 +328,9 @@ def writerecord(conn, sql, data):
      """ write a SDFile record the database """
      global hashset
      global insertcache
-
+     rectype = None     
      count = 0
+
      with conn.cursor() as cur:
          columns = data.keys()
          values = [data[column] for column in columns]
@@ -317,21 +339,37 @@ def writerecord(conn, sql, data):
             print("--start record")
             print(cmd)
             print("--end record")
+         
+         if 'molecule_id' in columns:
+            hashdata = 'm' + str(data['molecule_id'])
+            rectype = 'molecule'
+         elif 'RX_ID' in columns:
+            hashdata = 'r' + str(data['RX_ID'])
+            rectype = 'reaction'
+         else:
+            hashdata = 'o'+ cmd
+            rectype = 'other'
 
-         h = hashrecord(cmd)
+         h = hashrecord(hashdata)
 
          if not h in hashset:
             hashset.add(h) 
             insertcache.add(cmd)
             count += 1
+            counts[rectype] += 1
             if len(insertcache) > CHUNKSIZE:
                 if not TEST_MODE:
                     cur.execute( '\n'.join(insertcache))
 
                 insertcache.clear()
-                conn.commit()
 
      return count
+
+
+
+def getConnection():
+    conn=psql.connect(user=dbname)
+    return conn
 
 
             
@@ -341,10 +379,14 @@ def readrdfiles():
   """
   global insertcache
   global index
-  conn=psql.connect(user=dbname)
+
+  conn = getConnection()
+
   key = "_"
+  numfiles = len(glob.glob('rdf/*.rdf.gz'))
 
   for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+        start = time.time()
         index = os.path.basename(filepath)
         index = int(index[index.find(key) + len(key):-7 ])
         print('file index', index)
@@ -352,7 +394,10 @@ def readrdfiles():
         readrdfile(filepath, conn)
         newlen = len(hashset)
         new = newlen - oldlen
-        print("\tadded %6i total records: %6i" %( new, newlen))
+        elapsed = time.time() - start 
+        remaining = '%5.2f' % ((numfiles-i-1)*elapsed )
+        elapsed = "%5.2f" %(elapsed)
+        print('\ttook:',elapsed, 'remaining:', remaining, 'inserts:',counts)
   
   conn.commit()
   conn.close()
