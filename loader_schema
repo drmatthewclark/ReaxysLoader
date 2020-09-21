@@ -151,6 +151,7 @@ WITH (autovacuum_enabled='false');
 
 CREATE TABLE reaxys.stages (
     stage_id bigint NOT NULL,
+    serial_id SERIAL,
     reactants bigint[],
     products bigint[],
     reagents bigint[],
@@ -168,6 +169,7 @@ WITH (autovacuum_enabled='false');
 
 CREATE TABLE reaxys.variation (
     variation_id bigint NOT NULL,
+    serial_id SERIAL,
     creation_date date,
     experiment_id text,
     experiment_type text,
