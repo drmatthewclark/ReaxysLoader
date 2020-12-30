@@ -1,0 +1,52 @@
+-- assemble data for reaction analytics
+set search_path to reaxys;
+
+select * into reaxys.cleaned from
+(
+select 
+ reaction.*,
+ rxnsmiles,
+ reagents,
+ catalysts,
+ solvents,
+ max(yield) as yield,
+ conditions
+
+from 
+
+(select reaxys_reaction_id,  reactant_id, product_id, unnest(variations) as variation_id from reaction) reaction, 
+variation,
+substance,
+rdfile
+
+where
+ reaction.variation_id = variation.variation_id and 
+ substance.substance_id = any(variation.products) and
+ rx_id = reaxys_reaction_id and
+ stages is null 
+
+group by 
+
+ reaxys_reaction_id,
+ reactant_id,
+ product_id,
+ rxnsmiles,
+ reaction.variation_id,
+ reagents,
+ catalysts,
+ solvents,
+ stages,
+ variation.conditions
+
+) g
+;
+
+select * into reaxys.full_reaction_set from
+(
+select cleaned.*, time, temperature 
+from 
+  reaxys.cleaned 
+left join reaxys.conditions 
+on 
+ condition_id = any(conditions)
+) x;
