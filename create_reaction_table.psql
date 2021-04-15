@@ -1,3 +1,4 @@
+set search_path to reaxys;
 
 select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions from variation where stages is null)a;
 
@@ -12,7 +13,7 @@ create index on reaction_unnest(reaxys_reaction_id);
 select * into full_reaction_set from 
 (select
  reaction.reaxys_reaction_id,
- rxnsmiles,
+ rdfile.rxnsmiles,
  variation.reagents,
  variation.catalysts,
  variation.solvents,
@@ -37,7 +38,8 @@ where
  reaction.variation_id = variation.variation_id and
  substance.substance_id = variation.products and
  molecule.molecule_id = substance.reaxys_id  and
- rx_id = reaxys_reaction_id
+ rx_id = reaxys_reaction_id and
+ rdfile.rxnsmiles != ''
 ) x;
 
 
