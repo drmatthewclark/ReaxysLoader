@@ -1,6 +1,14 @@
 set search_path to reaxys;
 
-select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions from variation where stages is null)a;
+drop table variation_unnest;
+drop table reaction_unnest;
+drop table full_reaction_set;
+
+/* 
+select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions, cit_id[1] as citation_id from variation where stages is null) a;
+*/
+
+select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions, cit_id[1] as citation_id from variation) a;
 
 select * into reaction_unnest from (select reaxys_reaction_id,  reactant_id, unnest(variations) as variation_id from reaction) reaction;
 
@@ -13,6 +21,7 @@ create index on reaction_unnest(reaxys_reaction_id);
 select * into full_reaction_set from 
 (select
  reaction.reaxys_reaction_id,
+ variation.variation_id,
  rdfile.rxnsmiles,
  variation.reagents,
  variation.catalysts,
@@ -22,9 +31,11 @@ select * into full_reaction_set from
  molecule.smiles as product_smiles,
  substance.yield,
  conditions.time,
- conditions.temperature
+ conditions.temperature,
+ year
 
 from
+ citation,
  reaction_unnest reaction,
  substance,
  molecule,
@@ -35,11 +46,13 @@ left join conditions on
  conditions.condition_id = variation.conditions
 
 where
+ variation.citation_id = citation.citation_id and 
  reaction.variation_id = variation.variation_id and
  substance.substance_id = variation.products and
  molecule.molecule_id = substance.reaxys_id  and
  rx_id = reaxys_reaction_id and
  rdfile.rxnsmiles != ''
+
 ) x;
 
 
