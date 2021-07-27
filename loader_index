@@ -33,13 +33,13 @@ CREATE INDEX ON reaxys.reaction (reaxys_reaction_id);
 CREATE INDEX ON reaxys.substance (reaxys_id);
 
 ALTER TABLE reaxys.molecule ADD COLUMN fprint bfp;
-UPDATE reaxys.molecule set molecule = mol_from_smiles(molstructure::cstring);
-UPDATE reaxys.molecule set fprint = rdkit_fp(molecule);
-CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
+-- UPDATE reaxys.molecule set molecule = mol_from_smiles(smiles::cstring);
+-- UPDATE reaxys.molecule set fprint = rdkit_fp(molecule);
+-- CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
 
 CREATE INDEX yield_index ON reaxys.substance USING btree (yield);
 
-CREATE INDEX rdfile_reaction_idx ON reaxys.rdfile USING gist (reaction);
+-- CREATE INDEX rdfile_reaction_idx ON reaxys.rdfile USING gist (reaction);
 CREATE INDEX rx_qry5_index ON reaxys.rdfile USING btree (rx_qry5);
 CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
 
