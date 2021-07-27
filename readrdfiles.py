@@ -35,19 +35,6 @@ counts['other'] = 0
 rireg = len('$RFMT $RIREG')
 
 
-def wait(conn):
-    while True:
-        state = conn.poll()
-        if state == psql.extensions.POLL_OK:
-            break
-        elif state == psql.extensions.POLL_WRITE:
-            pass
-        elif state == psql.extensions.POLL_READ:
-            pass
-        else:
-            raise psql.OperationalError("poll() returned %s" % state)
-
-
 def readnextRDfile(file, conn):
     """  read the next reaction from the concatenated file """
     line = '' # file.readline()
@@ -298,15 +285,19 @@ def readrdfile(fname, conn):
                 break;
             if 'RX_ID' in rdrecord.keys():
                 count += writerecord(conn, sql, rdrecord)
-        
-        if not TEST_MODE:
-            with conn.cursor() as cur:
-                cur.execute( '\n'.join(insertcache))
-                wait(cur.connection)
-        insertcache.clear()
-        conn.commit()
+
+    flush(conn) 
 
     print("\tprocessed %7i reaction records" %(count))
+
+
+
+def flush(conn):
+        if not TEST_MODE and len(insertcache) > 0:
+            with conn.cursor() as cur:
+                cur.execute( '\n'.join(insertcache))
+        insertcache.clear()
+        conn.commit()
 
 
 """
@@ -358,10 +349,7 @@ def writerecord(conn, sql, data):
             count += 1
             counts[rectype] += 1
             if len(insertcache) > CHUNKSIZE:
-                if not TEST_MODE:
-                    cur.execute( '\n'.join(insertcache))
-
-                insertcache.clear()
+                flush(conn)
 
      return count
 
