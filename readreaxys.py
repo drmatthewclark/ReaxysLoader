@@ -13,6 +13,11 @@ import os
 import time
 import gzip
 from myhash import myhash
+from pathlib import Path
+
+path = Path('.')
+version = os.path.basename(path.parent.absolute())
+print('loading version', version)
 
 CHUNKSIZE = 50000
 lines = set()
@@ -359,6 +364,10 @@ def readcitations(tree, conn):
 def load():
     
     conn = psql.connect(user=dbname)
+
+    with conn.cursor() as cur:
+        cur.execute('insert into reaxys.version (version) values (%s);', (version,))
+        conn.commit()
  
     for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):
         print("file: ", filepath)
