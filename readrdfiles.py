@@ -22,8 +22,8 @@ index = 0
 
 CHUNKSIZE = 50000
 TEST_MODE = False
+STORE_RDFILE = False
 
-efilename='structures.errors'
 hashset = set()
 insertcache = set()
 lastline = None
@@ -73,7 +73,10 @@ def readnextRDfile(file, conn):
 
     lastline = line
     tags = processRXN(rdfile, conn)
-    tags['rx_rdfile'] = rdfile[:-1] #trim last char
+    # add the whole RDFILE to the database
+    # it is quite large and not terribly useful for most purposes
+    if STORE_RDFILE:
+        tags['rx_rdfile'] = rdfile[:-1] #trim last char
     tags['rx_file_id'] = index
     return tags # dictionary 
 
