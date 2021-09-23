@@ -43,5 +43,5 @@ CREATE INDEX yield_index ON reaxys.substance USING btree (yield);
 CREATE INDEX rx_qry5_index ON reaxys.rdfile USING btree (rx_qry5);
 CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
 CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
-CREATE INDEX rdfile.reaction  USING gist (reaction);
+CREATE INDEX rx_reaction_index ON reaxys.rdfile  USING gist (reaction);
 
