@@ -4,6 +4,7 @@
 
 -- updates are 100x  more efficient before indexing
 -- add molecule and reaction objects to table
+
 UPDATE reaxys.molecule set molecule = mol_from_smiles(smiles::cstring);
 UPDATE reaxys.rdfile   set reaction = reaction_from_smiles(rxnsmiles::cstring);
 
@@ -44,5 +45,3 @@ CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
 CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
 CREATE INDEX rdfile.reaction  USING gist (reaction);
 
-
-VACUUM;
