@@ -6,8 +6,8 @@ ROOT=`dirname "$(readlink -f "$0")"`
 PSQL=/usr/bin/psql
 
 echo "drop schema reaxys cascade;" | $PSQL
-echo "\i $ROOT/loader_schema"      | $PSQL
+echo "\i $ROOT/reaxys_schema"      | $PSQL
 python3 $ROOT/readreaxys.py
 python3 $ROOT/readrdfiles.py
 python3 $ROOT/substance_dedup.py
-$PSQL  < $ROOT/loader_index
+$PSQL  < $ROOT/reaxys_index
