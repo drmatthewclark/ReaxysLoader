@@ -11,7 +11,7 @@ SET row_security = off;
 --
 -- Name: reaxys; Type: SCHEMA; Schema: -; Owner: -
 --
-
+DROP SCHEMA IF EXISTS reaxys CASCADE;
 CREATE SCHEMA reaxys;
 
 
