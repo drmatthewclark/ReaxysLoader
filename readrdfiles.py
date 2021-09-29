@@ -356,6 +356,20 @@ def writerecord(conn, sql, data):
                 flush(conn)
 
      return count
+
+
+def sqlfile(fname):
+    """ read and execute a sql file"""
+    conn = getConnection()
+    with open(fname, 'r') as f:
+        sql = f.read()
+
+    print('executing sql', fname)
+    with conn.cursor() as cur:
+        cur.execute(sql)
+    conn.commit()
+    conn.close()
+
             
 def readrdfiles():
   """ read the SDFiles. This requires special functions because this is
@@ -385,6 +399,6 @@ def readrdfiles():
   
   conn.commit()
   conn.close()
-
+  sqlfile('../ReaxysLoader/reaxys_index')
 
 readrdfiles()
