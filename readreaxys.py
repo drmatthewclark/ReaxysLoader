@@ -14,6 +14,7 @@ import time
 import gzip
 from myhash import myhash
 from pathlib import Path
+from dbconnect import getConnection
 
 path = Path('.')
 version = os.path.basename(path.parent.absolute())
@@ -363,7 +364,7 @@ def readcitations(tree, conn):
 
 def load():
     
-    conn = psql.connect(user=dbname)
+    conn = getConnection()
 
     with conn.cursor() as cur:
         cur.execute('insert into reaxys.version (version) values (%s);', (version,))
