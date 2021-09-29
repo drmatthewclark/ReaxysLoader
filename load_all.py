@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #  run the processes
 
 import readreaxys
