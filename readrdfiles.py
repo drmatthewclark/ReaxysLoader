@@ -9,6 +9,7 @@ import gzip
 import os
 import sys
 import time
+from dbconnect import getConnection
 
 # for rdkit Mol to Smiles
 from rdkit import Chem
@@ -355,14 +356,6 @@ def writerecord(conn, sql, data):
                 flush(conn)
 
      return count
-
-
-
-def getConnection():
-    conn=psql.connect(user=dbname)
-    return conn
-
-
             
 def readrdfiles():
   """ read the SDFiles. This requires special functions because this is
