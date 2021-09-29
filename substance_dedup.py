@@ -1,9 +1,10 @@
 #
 # dedup some substance id's not previously deduplictated and append varying names
 #
+from dbconnect import getConnection
 import psycopg2 as psql
-dbname='mclark'
-conn = psql.connect(user=dbname)
+
+conn = getConnection
 
 dups   =  "select substance_id  from (select count(substance_id) as count, substance_id from reaxys.substance group by substance_id)a where a.count >1;"
 getdup =  'select ctid,* from reaxys.substance where substance_id = %s order by name asc;'
