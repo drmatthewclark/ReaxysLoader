@@ -1,7 +1,7 @@
 import psycopg2 as psql
 
 
-dbname='mclark'
+dbname='xmclark'
 
 def getConnection():
     conn=psql.connect(user=dbname)
