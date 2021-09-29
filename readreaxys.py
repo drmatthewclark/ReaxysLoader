@@ -1,6 +1,4 @@
 # database to load data to
-dbname='mclark'
-
 # if true will print out the sql statements and other data for debugging
 debug = False
 
@@ -19,6 +17,7 @@ from dbconnect import getConnection
 path = Path('.')
 version = os.path.basename(path.parent.absolute())
 print('loading version', version)
+
 
 CHUNKSIZE = 50000
 lines = set()
@@ -362,9 +361,25 @@ def readcitations(tree, conn):
 
 
 
+def sqlfile(fname):
+    """ read and execute a sql file"""
+    c = getConnection()
+    with open(fname, 'r') as f:
+        sql = f.read()
+
+    print('executing sql', fname)
+    with c.cursor() as cur:
+        cur.execute(sql)
+    c.commit()
+    c.close()
+
+
+
+
 def load():
     
     conn = getConnection()
+    sqlfile('../ReaxysLoader/reaxys_schema')
 
     with conn.cursor() as cur:
         cur.execute('insert into reaxys.version (version) values (%s);', (version,))
