@@ -364,10 +364,16 @@ def sqlfile(fname):
     with open(fname, 'r') as f:
         sql = f.read()
 
+    commands = sql.split(';')
+    
     print('executing sql', fname)
     with conn.cursor() as cur:
-        cur.execute(sql)
-    conn.commit()
+        for command in commands:
+            command = command.strip()
+            if command != '':
+                cur.execute(sql)
+                conn.commit()
+
     conn.close()
 
             
@@ -399,6 +405,5 @@ def readrdfiles():
   
   conn.commit()
   conn.close()
-  sqlfile('../ReaxysLoader/reaxys_index')
 
 readrdfiles()
