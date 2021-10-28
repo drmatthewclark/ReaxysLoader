@@ -102,7 +102,7 @@ def processRXN(rdfile, conn):
     dtype = None
     data = {}
     regno = 0
-    msql = 'insert into reaxys.molecule (%s) values %s;'
+    msql = 'insert into reaxys_temp.molecule (%s) values %s;'
 
     for line in rdfile.splitlines():
         endctab = None
@@ -282,7 +282,7 @@ def readrdfile(fname, conn):
         file.readline()
         file.readline()
         # loop over concatenated files
-        sql = 'insert into reaxys.rdfile (%s) values %s;'
+        sql = 'insert into reaxys_temp.rdfile (%s) values %s;'
         while True:
             rdrecord = readnextRDfile(file, conn)
             if not rdrecord:

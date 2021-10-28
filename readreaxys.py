@@ -52,7 +52,7 @@ def readconditions(tree, conn):
 
     root = tree.getroot()
 
-    sql =  'insert into reaxys.conditions (%s) values %s;'
+    sql =  'insert into reaxys_temp.conditions (%s) values %s;'
     cur = conn.cursor()
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/CONDITIONS'): 
@@ -109,7 +109,7 @@ def readstages(tree, conn):
     insertcache = set()
     root = tree.getroot()
 
-    sql =  'insert into reaxys.stages (%s) values %s;'
+    sql =  'insert into reaxys_temp.stages (%s) values %s;'
     cur = conn.cursor()
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS/STAGES'): 
@@ -152,7 +152,7 @@ def readvariations(tree, conn):
 
     root = tree.getroot()
 
-    sql =  'insert into reaxys.variation (%s) values %s;'
+    sql =  'insert into reaxys_temp.variation (%s) values %s;'
     cur = conn.cursor()
     for record in root.findall('REACTIONS/REACTION'):
         for elem in record.findall('VARIATIONS'): 
@@ -214,7 +214,7 @@ def readreactions(tree, conn):
     insertcache = set()
     root = tree.getroot()
 
-    sql =  'insert into reaxys.reaction (%s) values %s;'
+    sql =  'insert into reaxys_temp.reaction (%s) values %s;'
     cur = conn.cursor()
 
     for elem in root.findall('REACTIONS/REACTION'):
@@ -280,7 +280,7 @@ def readsubstances(tree, conn):
     insertcache = set()
     root = tree.getroot()
 
-    sql =  'insert into reaxys.substance (%s) values %s;'
+    sql =  'insert into reaxys_temp.substance (%s) values %s;'
     cur = conn.cursor()
 
     for record in root.findall('REACTIONS/REACTION'):
@@ -329,7 +329,7 @@ def readcitations(tree, conn):
 
     root = tree.getroot()
  
-    sql =  'insert into reaxys.citation (%s) values %s;'
+    sql =  'insert into reaxys_temp.citation (%s) values %s;'
     cur = conn.cursor()
 
     for elem in root.findall('CITATIONS/CITATION'):
@@ -386,7 +386,7 @@ def load():
     sqlfile(mydir + '/reaxys_schema')
 
     with conn.cursor() as cur:
-        cur.execute('insert into reaxys.version (version) values (%s);', (version,))
+        cur.execute('insert into reaxys_temp.version (version) values (%s);', (version,))
         conn.commit()
  
     for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):

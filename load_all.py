@@ -1,8 +1,7 @@
-#!/usr/bin/python
-#  run the processes
 
 import os
 from dbconnect import getConnection
+from dbconnect import psql_cmd
 
 mydir = os.path.dirname(os.path.realpath(__file__))
 
@@ -31,5 +30,9 @@ import readreaxys
 import readrdfiles
 import substance_dedup
 sqlfile(mydir + '/reaxys_index')
+
+# drop old schema now and rename this one to the new one
+psql_cmd('drop schema reaxys cascade;')
+psql_cmd('alter schema reaxys_temp rename to reaxys;')
 
 print('reaxys load complete')
