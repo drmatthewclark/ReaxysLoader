@@ -11,15 +11,15 @@ SET row_security = off;
 --
 -- Name: reaxys; Type: SCHEMA; Schema: -; Owner: -
 --
-DROP SCHEMA IF EXISTS reaxys CASCADE;
-CREATE SCHEMA reaxys;
+DROP SCHEMA IF EXISTS REAXYS_TEMP CASCADE;
+CREATE SCHEMA REAXYS_TEMP;
 
 
 SET default_tablespace = '';
 
 SET default_with_oids = false;
 
-create table reaxys.version (
+create table REAXYS_TEMP.version (
  load_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
  version text
 );
@@ -28,7 +28,7 @@ create table reaxys.version (
 -- Name: citation; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.citation (
+CREATE TABLE REAXYS_TEMP.citation (
     citation_id bigint NOT NULL,
     type text,
     author text,
@@ -46,15 +46,14 @@ CREATE TABLE reaxys.citation (
     patent_pub_date text,
     abstract text,
     comments text
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: conditions; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.conditions (
+CREATE TABLE REAXYS_TEMP.conditions (
     condition_id bigint NOT NULL,
     atmosphere text,
     ph numrange,
@@ -65,15 +64,14 @@ CREATE TABLE reaxys.conditions (
     temperature numrange,
     "time" numrange,
     total_volume numrange
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: molecule; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.molecule (
+CREATE TABLE REAXYS_TEMP.molecule (
     molecule_id bigint NOT NULL,
     smiles text,
     sdfile text,
@@ -98,15 +96,14 @@ CREATE TABLE reaxys.molecule (
     name text,
     rx_file_id integer,
     molecule public.mol
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: rdfile; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.rdfile (
+CREATE TABLE REAXYS_TEMP.rdfile (
     rx_id bigint NOT NULL,
     rx_rank integer,
     rx_myd text,
@@ -124,15 +121,14 @@ CREATE TABLE reaxys.rdfile (
     rx_qry5 text,
     rx_file_id integer,
     reaction public.reaction
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: reaction; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.reaction (
+CREATE TABLE REAXYS_TEMP.reaction (
     reaction_id bigint NOT NULL,
     reaxys_reaction_id bigint,
     rxnstructure text,
@@ -145,15 +141,14 @@ CREATE TABLE reaxys.reaction (
     metabolite_id bigint[],
     product_id bigint[],
     variations bigint[]
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: stages; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.stages (
+CREATE TABLE REAXYS_TEMP.stages (
     stage_id bigint NOT NULL,
     reactants bigint[],
     products bigint[],
@@ -162,15 +157,14 @@ CREATE TABLE reaxys.stages (
     solvents bigint[],
     conditions bigint[],
     metabolites bigint[]
-)
-WITH (autovacuum_enabled='false');
+);
 
 
 --
 -- Name: variation; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.variation (
+CREATE TABLE REAXYS_TEMP.variation (
     variation_id bigint NOT NULL,
     creation_date date,
     experiment_id text,
@@ -221,24 +215,22 @@ CREATE TABLE reaxys.variation (
     sample_ref text,
     compound_name text,
     equivalents real
-)
-WITH (autovacuum_enabled='false');
-
+);
 
 --
 -- Name: rxn_conditions_multistage; Type: VIEW; Schema: reaxys; Owner: -
 --
 
-CREATE VIEW reaxys.rxn_conditions_multistage AS
+CREATE VIEW REAXYS_TEMP.rxn_conditions_multistage AS
  SELECT rdfile.rx_id,
     stages.stage_id,
     reaction.reaction_id,
     variation.variation_id,
     unnest(stages.conditions) AS condition_id
-   FROM reaxys.rdfile,
-    reaxys.reaction,
-    reaxys.variation,
-    reaxys.stages
+   FROM REAXYS_TEMP.rdfile,
+    REAXYS_TEMP.reaction,
+    REAXYS_TEMP.variation,
+    REAXYS_TEMP.stages
   WHERE ((reaction.reaxys_reaction_id = rdfile.rx_id) AND (variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NOT NULL) AND (stages.stage_id = ANY (variation.stages)));
 
 
@@ -246,15 +238,15 @@ CREATE VIEW reaxys.rxn_conditions_multistage AS
 -- Name: rxn_conditions_singlestage; Type: VIEW; Schema: reaxys; Owner: -
 --
 
-CREATE VIEW reaxys.rxn_conditions_singlestage AS
+CREATE VIEW REAXYS_TEMP.rxn_conditions_singlestage AS
  SELECT rdfile.rx_id,
     NULL::text AS stage_id,
     reaction.reaction_id,
     variation.variation_id,
     unnest(variation.conditions) AS condition_id
-   FROM reaxys.rdfile,
-    reaxys.reaction,
-    reaxys.variation
+   FROM REAXYS_TEMP.rdfile,
+    REAXYS_TEMP.reaction,
+    REAXYS_TEMP.variation
   WHERE ((variation.variation_id = ANY (reaction.variations)) AND (variation.stages IS NULL) AND (reaction.reaxys_reaction_id = rdfile.rx_id));
 
 
@@ -262,7 +254,7 @@ CREATE VIEW reaxys.rxn_conditions_singlestage AS
 -- Name: substance; Type: TABLE; Schema: reaxys; Owner: -
 --
 
-CREATE TABLE reaxys.substance (
+CREATE TABLE REAXYS_TEMP.substance (
     substance_id bigint NOT NULL,
     reaxys_id bigint,
     name text,
@@ -279,7 +271,6 @@ CREATE TABLE reaxys.substance (
     sample_ref text[],
     compound_name text[],
     comments text
-)
-WITH (autovacuum_enabled='false');
+);
 
 

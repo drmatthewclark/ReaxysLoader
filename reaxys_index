@@ -5,43 +5,42 @@
 -- updates are 100x  more efficient before indexing
 -- add molecule and reaction objects to table
 
-UPDATE reaxys.molecule set molecule = mol_from_smiles(smiles::cstring);
-UPDATE reaxys.rdfile   set reaction = reaction_from_smiles(rxnsmiles::cstring);
+UPDATE REAXYS_TEMP.molecule set molecule = mol_from_smiles(smiles::cstring);
+UPDATE REAXYS_TEMP.rdfile   set reaction = reaction_from_smiles(rxnsmiles::cstring);
 
-ALTER TABLE ONLY reaxys.citation
+ALTER TABLE ONLY REAXYS_TEMP.citation
     ADD CONSTRAINT citation_pkey PRIMARY KEY (citation_id);
 
-ALTER TABLE ONLY reaxys.conditions
+ALTER TABLE ONLY REAXYS_TEMP.conditions
     ADD CONSTRAINT conditions_pkey PRIMARY KEY (condition_id);
 
-ALTER TABLE ONLY reaxys.molecule
+ALTER TABLE ONLY REAXYS_TEMP.molecule
     ADD CONSTRAINT molecule_pkey PRIMARY KEY (molecule_id);
 
-ALTER TABLE ONLY reaxys.rdfile
+ALTER TABLE ONLY REAXYS_TEMP.rdfile
     ADD CONSTRAINT rdfile_pkey PRIMARY KEY (rx_id);
 
-ALTER TABLE ONLY reaxys.reaction
+ALTER TABLE ONLY REAXYS_TEMP.reaction
     ADD CONSTRAINT reaction_pkey PRIMARY KEY (reaction_id);
 
-ALTER TABLE ONLY reaxys.stages
+ALTER TABLE ONLY REAXYS_TEMP.stages
     ADD CONSTRAINT stages_pkey PRIMARY KEY (stage_id);
 
-ALTER TABLE ONLY reaxys.substance
+ALTER TABLE ONLY REAXYS_TEMP.substance
     ADD CONSTRAINT substance_pkey PRIMARY KEY (substance_id);
 
-ALTER TABLE ONLY reaxys.variation
+ALTER TABLE ONLY REAXYS_TEMP.variation
     ADD CONSTRAINT variation_pkey PRIMARY KEY (variation_id);
-
 
 -- create other indicies
 
-CREATE INDEX rx_id_index ON reaxys.reaction (reaxys_reaction_id);
-CREATE INDEX subs_id_index ON reaxys.substance (reaxys_id);
-CREATE INDEX yield_index ON reaxys.substance USING btree (yield);
-CREATE INDEX rx_qry0_index ON reaxys.rdfile USING btree (rx_qry0);
-CREATE INDEX rx_qry5_index ON reaxys.rdfile USING btree (rx_qry5);
-CREATE INDEX rx_trans_index ON reaxys.rdfile USING btree (rx_trans);
-create index rx_molecule_name on reaxys.molecule (name);
-CREATE INDEX molecule_molecule_idx ON reaxys.molecule USING gist (molecule);
-CREATE INDEX rx_reaction_index ON reaxys.rdfile  USING gist (reaction);
+CREATE INDEX rx_id_index ON REAXYS_TEMP.reaction (reaxys_reaction_id);
+CREATE INDEX subs_id_index ON REAXYS_TEMP.substance (reaxys_id);
+CREATE INDEX yield_index ON REAXYS_TEMP.substance USING btree (yield);
+CREATE INDEX rx_qry0_index ON REAXYS_TEMP.rdfile USING btree (rx_qry0);
+CREATE INDEX rx_qry5_index ON REAXYS_TEMP.rdfile USING btree (rx_qry5);
+CREATE INDEX rx_trans_index ON REAXYS_TEMP.rdfile USING btree (rx_trans);
+CREATE INDEX rx_molecule_name on REAXYS_TEMP.molecule (name);
+CREATE INDEX molecule_molecule_idx ON REAXYS_TEMP.molecule USING gist (molecule);
+CREATE INDEX rx_reaction_index ON REAXYS_TEMP.rdfile  USING gist (reaction);
 
