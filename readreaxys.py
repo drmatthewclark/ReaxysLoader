@@ -395,7 +395,7 @@ def load():
         readcitations(tree, conn)
 
     lines.clear()
-    tlist = []
+
     for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
        print("file: ", filepath)
        tree = ET.parse(gzip.open(filepath));
