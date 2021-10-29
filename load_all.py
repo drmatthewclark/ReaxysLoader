@@ -32,7 +32,7 @@ import substance_dedup
 sqlfile(mydir + '/reaxys_index')
 
 # drop old schema now and rename this one to the new one
-psql_cmd('drop schema reaxys cascade;')
-psql_cmd('alter schema reaxys_temp rename to reaxys;')
+print(psql_cmd('drop schema reaxys cascade;'))
+print(psql_cmd('alter schema reaxys_temp rename to reaxys;'))
 
 print('reaxys load complete')
