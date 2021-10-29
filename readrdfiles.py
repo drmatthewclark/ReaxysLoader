@@ -1,5 +1,6 @@
-# rmc file release number
-dbname='mclark'
+#
+#
+#
 debug = False
 import xml.etree.ElementTree as ET
 import psycopg2 as psql
@@ -370,7 +371,7 @@ def sqlfile(fname):
     with conn.cursor() as cur:
         for command in commands:
             command = command.strip()
-            if command != '':
+            if command != '' and not command.startswith('--'):
                 cur.execute(sql)
                 conn.commit()
 
@@ -405,5 +406,6 @@ def readrdfiles():
   
   conn.commit()
   conn.close()
+
 
 readrdfiles()
