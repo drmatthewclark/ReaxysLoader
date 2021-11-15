@@ -3,8 +3,8 @@
 # function to download update 
 update() {
 
-data=$1     # example: rmc-ff-download
-profile=$2  # example: rmc
+data=$1
+profile=$2
 
 list=`aws  --profile ${profile} s3 ls ${data}/ | sed 's/[^0-9]*//g' | sort -n -r | head -n 2`
 
