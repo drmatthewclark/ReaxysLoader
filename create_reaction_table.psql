@@ -1,58 +1,77 @@
+-- create data set for deep learning
+
 set search_path to reaxys;
+drop table if exists reac_var cascade;
 
-drop table variation_unnest;
-drop table reaction_unnest;
-drop table full_reaction_set;
+-- first pass at table for deep learning
 
-/* 
-select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions, cit_id[1] as citation_id from variation where stages is null) a;
-*/
+select 
+reaction_id,
+variation_id,
+reaxys_reaction_id,
+rxnsmiles,
+reactant_id,
+product_id,
+rxno_reaction_type,
+products,
+reagents,
+catalysts,
+solvents,
+array_length(stages,1) as nstages,
+year,
+time,
+temperature
 
-select * into variation_unnest from (select variation_id, creation_date, reactants, unnest(products) as products, reagents, catalysts, solvents, conditions[1] as conditions, cit_id[1] as citation_id from variation) a;
+into reac_var 
+from 
+  reaction, citation, rdfile, variation
 
-select * into reaction_unnest from (select reaxys_reaction_id,  reactant_id, unnest(variations) as variation_id from reaction) reaction;
+left join conditions on    -- left join because not all reactions have conditions
+ condition_id = any(variation.conditions)
 
-create index on variation_unnest(products);
-create index on variation_unnest(variation_id);
-create index on reaction_unnest(variation_id);
-create index on reaction_unnest(reaxys_reaction_id);
+where 
+	variation_id = any(reaction.variations) 
+	and rdfile.rx_id = reaxys_reaction_id
+	and citation_id = variation.cit_id[1];   -- first citation is most recent
+
+update reac_var set products = product_id where products is null;
 
 
-select * into full_reaction_set from 
-(select
- reaction.reaxys_reaction_id,
- variation.variation_id,
- rdfile.rxnsmiles,
- variation.reagents,
- variation.catalysts,
- variation.solvents,
- reaction.reactant_id,
- substance.reaxys_id as product,
- molecule.smiles as product_smiles,
- substance.yield,
- conditions.time,
- conditions.temperature,
- year
+-- expand to one reaction per product
 
-from
- citation,
- reaction_unnest reaction,
- substance,
- molecule,
- rdfile,
- variation_unnest variation
+select 
+reaction_id,
+variation_id,
+reaxys_reaction_id,
+rxnsmiles,
+reactant_id,
+rxno_reaction_type,
+unnest(products) as product,
+reagents,
+catalysts,
+solvents,
+nstages,
+year,
+time,
+temperature
 
-left join conditions on
- conditions.condition_id = variation.conditions
+into reac_var2 
+from reac_var;
 
-where
- variation.citation_id = citation.citation_id and 
- reaction.variation_id = variation.variation_id and
- substance.substance_id = variation.products and
- molecule.molecule_id = substance.reaxys_id  and
- rx_id = reaxys_reaction_id and
- rdfile.rxnsmiles != ''
+drop table reac_var;
 
-) x;
+
+-- add the yield for each product that has one.
+alter table reac_var2 add column yield float;
+update reac_var2 set yield = substance.yield from substance where reac_var2.product = substance.substance_id;
+
+-- set smiles for reactions w/o yeild
+alter table reac_var2 add column product_smiles text;
+update reac_var2 set product_smiles = smiles from molecule where molecule_id = product and smiles != '' and smiles is not null;
+
+-- set smiles for products with yeilds
+select distinct substance_id, smiles into temporary table rxn_smiles from molecule, substance where molecule_id = reaxys_id and smiles != '' and smiles is not null;
+update reac_var2 set product_smiles = smiles from rxn_smiles where product = substance_id and product_smiles is null;
+delete from reac_var2 where product_smiles is null;
 
 
