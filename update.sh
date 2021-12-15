@@ -7,7 +7,7 @@ data=$1
 profile=$2
 
 list=`aws  --profile ${profile} s3 ls ${data}/ | sed 's/[^0-9]*//g' | sort -n -r | head -n 2`
-
+success="no"
 for release in $list; do
 	if [ -d ${release} ]; then
 	       echo "${release} already downloaded"
@@ -18,6 +18,7 @@ for release in $list; do
 	ecode=$?
 
 	if [ $ecode = 0 ]; then 
+		success="yes"
 		echo "...${release} downloaded"
 		return 0 # exit if success
 	else
