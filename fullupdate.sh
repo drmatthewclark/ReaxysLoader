@@ -1,16 +1,24 @@
 #!/bin/bash
 # download latest rmc dataset
 
+loader="ReaxysLoader"
+
 echo -n "reaxys "
 source update.sh
-source ./ReaxysLoader/credentials.py
+source ./${loader}/credentials.py
 
-update $reaxys_loc $reaxys_name
+update ${download} ${dataset}
 
-cd ${latest}
+if [ "${success}" = "no" ]; then
+	echo "loading ended"
+	exit 1
+fi
+
+cd ${release}
+pwd
 eval "$(conda shell.bash hook)"
 conda activate standard
-time python ../ReaxysLoader/load_all.py
+time python ../${loader}/load_all.py
 ../../fix-perms
 
 cd ..
