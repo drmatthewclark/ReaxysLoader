@@ -22,6 +22,8 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 
 CHUNKSIZE = 50000
 
+lines = set()
+
 def getid(element):
     """ returns a hash code for the XML element and children to create a repeatable id for the element """
 
@@ -48,7 +50,6 @@ def readconditions(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-    lines = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.conditions (%s) values %s;'
@@ -85,6 +86,7 @@ def readconditions(tree, conn):
             columns = data.keys()
             values = [data[column] for column in columns]
             cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
@@ -108,7 +110,6 @@ def readstages(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-    lines = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.stages (%s) values %s;'
@@ -155,7 +156,6 @@ def readvariations(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-    lines = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.variation (%s) values %s;'
@@ -206,8 +206,11 @@ def readvariations(tree, conn):
                    cur.execute( '\n'.join(insertcache))
                    insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
+    cur.close()
+    conn.commit()
     print("\treadvariations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
@@ -219,7 +222,6 @@ def readreactions(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-    lines = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.reaction (%s) values %s;'
@@ -273,7 +275,10 @@ def readreactions(tree, conn):
               cur.execute( '\n'.join(insertcache))
               insertcache.clear() 
 
-    cur.execute( '\n'.join(insertcache))
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
+
+    cur.close()
     conn.commit()
     print("\treadreactions load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
@@ -287,7 +292,6 @@ def readsubstances(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-    lines = set()
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.substance (%s) values %s;'
@@ -323,8 +327,9 @@ def readsubstances(tree, conn):
                             cur.execute( '\n'.join(insertcache))
                             insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadsubstances load took %5.2f %6i records" % ((time.time() - start), len(lines)) )
@@ -336,7 +341,6 @@ def readcitations(tree, conn):
     read an xml file into the designated database
     """
     insertcache = set()
-    lines = set()
     start = time.time() 
 
     root = tree.getroot()
@@ -366,8 +370,9 @@ def readcitations(tree, conn):
               cur.execute( '\n'.join(insertcache))
               insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadcitations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
@@ -406,7 +411,6 @@ def load():
         print("file: ", filepath)
         tree = ET.parse(gzip.open(filepath));
         readcitations(tree, conn)
-
 
     for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
        print("file: ", filepath)
