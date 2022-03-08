@@ -44,7 +44,7 @@ def readnextRDfile(file, conn):
     tags = {}
     blankcount = 0
     global lastline
-
+    
     line = file.readline().rstrip()
 
     # these lines only at beginning of file
@@ -75,6 +75,10 @@ def readnextRDfile(file, conn):
 
     lastline = line
     tags = processRXN(rdfile, conn)
+
+    if tags is None:
+        return {'0' : '0'}  # return None means end of file
+    
     # add the whole RDFILE to the database
     # it is quite large and not terribly useful for most purposes
     if STORE_RDFILE:
@@ -178,7 +182,11 @@ def processRXN(rdfile, conn):
 
 # end of loop over lines, process them
 # data is a dictionary with elements like
-    reacts, prods, data['rxnsmiles'] = tosmiles(products, reactants)
+    tosmiles_result = tosmiles(products, reactants)
+    if tosmiles_result is not None:
+        reacts, prods, data['rxnsmiles'] = tosmiles_result
+    else:
+        return None
 
     for i, (regno, smiles) in enumerate(reacts):
         for (rxprefix, rxn) in data['RX_RXRN']:
@@ -253,6 +261,11 @@ def tosmiles(products, reactants):
 
     for regno,r in reactants:
         reactant_smiles = (regno, createSmiles(r)) 
+
+        # skip reaction if a component had an error
+        if reactant_smiles[1] is None:
+            return None
+
         reacts.append(reactant_smiles)
         if reactant_smiles[1] != '':
             smiles += reactant_smiles[1] + '.'
@@ -262,6 +275,11 @@ def tosmiles(products, reactants):
 
     for regno, p in products:
         product_smiles = (regno, createSmiles(p)) 
+
+        # skip reaction if a component had an error
+        if product_smiles[1] is None:
+           return None
+ 
         prods.append(product_smiles)
         if product_smiles[1] != '':
             smiles += product_smiles[1] + '.'
