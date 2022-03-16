@@ -389,14 +389,20 @@ def load():
         cur.execute('insert into reaxys_temp.version (version) values (%s);', (version,))
         conn.commit()
  
-    for i, filepath in enumerate(glob.iglob('udm-cit/*citations*.xml.gz')):
+    file_list = glob.iglob('udm-cit/*citations*.xml.gz')
+    file_list.sort()
+
+    for i, filepath in enumerate(file_list):
         print("file: ", filepath)
         tree = ET.parse(gzip.open(filepath));
         readcitations(tree, conn)
 
     lines.clear()
 
-    for i, filepath in enumerate(glob.iglob('udm-rea/*reactions*.xml.gz')):
+    file_list = glob.iglob('udm-rea/*reactions*.xml.gz')
+    file_list.sort()
+     
+    for i, filepath in enumerate(file_list):
        print("file: ", filepath)
        tree = ET.parse(gzip.open(filepath));
        readreactions(tree, conn)
