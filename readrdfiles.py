@@ -388,13 +388,15 @@ def readrdfiles():
   conn = getConnection()
 
   key = "_"
-  numfiles = len(glob.glob('rdf/*.rdf.gz'))
+  file_list = glob.glob('rdf/*.rdf.gz') 
+  numfiles = len(file_list)
+  file_list.sort()
 
-  for i, filepath in enumerate(glob.iglob('rdf/*.rdf.gz')):
+  for i, filepath in enumerate(file_list):
         start = time.time()
         index = os.path.basename(filepath)
         index = int(index[index.find(key) + len(key):-7 ])
-        print('file index', index)
+        print('file index', index, 'of', str(numfiles))
         oldlen = len(hashset)
         readrdfile(filepath, conn)
         newlen = len(hashset)
