@@ -21,6 +21,7 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 
 
 CHUNKSIZE = 50000
+
 lines = set()
 
 def getid(element):
@@ -49,15 +50,15 @@ def readconditions(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.conditions (%s) values %s;'
     cur = conn.cursor()
-    for record in root.findall('REACTIONS/REACTION'):
-        for elem in record.findall('VARIATIONS/CONDITIONS'): 
+    for record in root.findall('REACTIONS'):
+        for elem in record.findall('.//CONDITIONS'):
             data = {}
             data['condition_id'] = getid(elem) 
+
             for condition in ['ATMOSPHERE','PREPARATION','REFLUX']:
                  subelem = elem.findall(condition)
                  if subelem:
@@ -85,6 +86,7 @@ def readconditions(tree, conn):
             columns = data.keys()
             values = [data[column] for column in columns]
             cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
@@ -93,8 +95,9 @@ def readconditions(tree, conn):
                    cur.execute( '\n'.join(insertcache))
                    insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadconditions load took %5.2f %6i records" % ((time.time() - start), len(lines)))
@@ -129,6 +132,7 @@ def readstages(tree, conn):
             columns = data.keys()
             values = [data[column] for column in columns]
             cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"  
+
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
@@ -137,11 +141,14 @@ def readstages(tree, conn):
                    cur.execute( '\n'.join(insertcache))
                    insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadstages load took %5.2f %6i records" % ((time.time() - start), len(lines)))
+
+
 
 def readvariations(tree, conn):
     """ 
@@ -149,7 +156,6 @@ def readvariations(tree, conn):
     """
     start = time.time() 
     insertcache = set()
-
     root = tree.getroot()
 
     sql =  'insert into reaxys_temp.variation (%s) values %s;'
@@ -191,6 +197,7 @@ def readvariations(tree, conn):
             columns = data.keys()
             values = [data[column] for column in columns]
             cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+
             h = hash(cmd)
             if not h in lines:
                 lines.add(h)
@@ -199,8 +206,11 @@ def readvariations(tree, conn):
                    cur.execute( '\n'.join(insertcache))
                    insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
+    cur.close()
+    conn.commit()
     print("\treadvariations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
 
@@ -256,6 +266,7 @@ def readreactions(tree, conn):
         columns = data.keys()
         values = [data[column] for column in columns]
         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n"
+
         h = hash(cmd)
         if not h in lines:
            lines.add(h)
@@ -264,7 +275,10 @@ def readreactions(tree, conn):
               cur.execute( '\n'.join(insertcache))
               insertcache.clear() 
 
-    cur.execute( '\n'.join(insertcache))
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
+
+    cur.close()
     conn.commit()
     print("\treadreactions load took %5.2f %6i records" % ((time.time() - start), len(lines)))
     return
@@ -304,6 +318,7 @@ def readsubstances(tree, conn):
                     columns = data.keys()
                     values = [data[column] for column in columns]
                     cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode('utf-8') + "\n" 
+
                     h = hash(cmd)
                     if not h in lines:
                         lines.add(h)
@@ -312,8 +327,9 @@ def readsubstances(tree, conn):
                             cur.execute( '\n'.join(insertcache))
                             insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadsubstances load took %5.2f %6i records" % ((time.time() - start), len(lines)) )
@@ -344,6 +360,7 @@ def readcitations(tree, conn):
 
         columns = data.keys()
         values = [data[column] for column in columns]
+
         cmd = cur.mogrify(sql, (AsIs(','.join(columns)), tuple(values))).decode() + '\n'
         h = hash(cmd)
         if not h in lines:
@@ -353,8 +370,9 @@ def readcitations(tree, conn):
               cur.execute( '\n'.join(insertcache))
               insertcache.clear() 
 
+    if len(insertcache) > 0:
+        cur.execute( '\n'.join(insertcache))
 
-    cur.execute( '\n'.join(insertcache))
     cur.close()
     conn.commit()
     print("\treadcitations load took %5.2f %6i records" % ((time.time() - start), len(lines)))
