@@ -3,7 +3,7 @@
 
 loader="ReaxysLoader"
 
-echo -n "reaxys "
+echo "reaxys "
 source update.sh
 source ./${loader}/credentials.py
 
@@ -26,8 +26,10 @@ cd ..
 del() {
   shift
   for d in $*; do
-        echo 'removing dataset' $d
-        rm -r "${d}"
+	if [ ! "${d}" == "${release}" ]; then
+          echo 'removing dataset' $d
+          rm -r "${d}"
+	fi
   done
 
 }
