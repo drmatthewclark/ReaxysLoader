@@ -9,6 +9,9 @@ profile=$2
 list=`aws  --profile ${profile} s3 ls ${data}/ | sed 's/[^0-9]*//g' | sort -n -r | head -n 2`
 latest=`ls -dc 2[0-9]* | tail -n 1`
 echo "latest is " $latest
+if [ "$latest" = "" ]; then
+	latest=0
+fi
 
 success="no"
 for release in $list; do
